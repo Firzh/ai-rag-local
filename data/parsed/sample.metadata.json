@@ -1,0 +1,15 @@
+{
+  "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\sample.pdf",
+  "source_name": "sample.pdf",
+  "file_ext": ".pdf",
+  "parser": "opendataloader_pdf",
+  "parsed_output_dir": "F:\\AI-Models\\ai-rag-local\\data\\parsed\\pdf\\sample",
+  "parsed_markdown_path": "F:\\AI-Models\\ai-rag-local\\data\\parsed\\pdf\\sample\\sample.md",
+  "parsed_json_path": "F:\\AI-Models\\ai-rag-local\\data\\parsed\\pdf\\sample\\sample.json",
+  "document_hash": "229defbb0cee6f02673a5cde290d0673e75a0dc31cec43989c8ab2a4eca7e1bb",
+  "file_type_label": "pdf",
+  "mime_type": "application/pdf",
+  "magika_group": "document",
+  "embedding_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "parsed_at": "2026-04-18T09:27:11.983389+00:00"
+}

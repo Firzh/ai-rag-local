@@ -1,0 +1,10 @@
+.env
+.venv
+*__pycache__
+.cpython-*
+*.sqlite3
+*.log
+*.bin
+*.bak
+*.tmp
+

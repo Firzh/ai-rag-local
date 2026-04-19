@@ -1,0 +1,66 @@
+{
+  "magika": {
+    "role": "file router",
+    "allowed_claims": [
+      "file router",
+      "mendeteksi tipe file",
+      "mengidentifikasi jenis file",
+      "mengarahkan file ke parser yang sesuai",
+      "mengarahkan file ke proses parsing yang sesuai",
+      "routing file"
+    ],
+    "forbidden_claims": [
+      "Magika melakukan parsing PDF",
+      "Magika melakukan embedding",
+      "Magika menyimpan embedding",
+      "Magika menjadi vector database",
+      "Magika menghasilkan jawaban",
+      "Magika menjalankan model Qwen"
+    ]
+  },
+  "opendataloader": {
+    "role": "PDF parser",
+    "allowed_claims": [
+      "parser PDF",
+      "memproses PDF",
+      "mengubah PDF menjadi teks",
+      "menghasilkan markdown",
+      "menghasilkan JSON parsing"
+    ],
+    "forbidden_claims": [
+      "menjadi vector database",
+      "melakukan embedding",
+      "menghasilkan jawaban final"
+    ]
+  },
+  "fastembed": {
+    "role": "embedder",
+    "allowed_claims": [
+      "embedder",
+      "menghasilkan embedding",
+      "mengubah teks menjadi vektor"
+    ],
+    "forbidden_claims": [
+      "menyimpan vector database",
+      "melakukan parsing PDF",
+      "menghasilkan jawaban final"
+    ]
+  },
+  "chroma": {
+    "role": "vector database",
+    "allowed_claims": [
+      "vector database",
+      "menyimpan embedding",
+      "menyimpan vektor",
+      "mendukung retrieval",
+      "pencarian berbasis embedding"
+    ],
+    "forbidden_claims": [
+      "Chroma melakukan parsing PDF",
+      "Chroma melakukan embedding",
+      "Chroma menjadi file router",
+      "Chroma menghasilkan jawaban final",
+      "Chroma menjalankan model Qwen"
+    ]
+  }
+}

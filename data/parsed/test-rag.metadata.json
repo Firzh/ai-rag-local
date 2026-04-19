@@ -1,0 +1,13 @@
+{
+  "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\test-rag.txt",
+  "source_name": "test-rag.txt",
+  "file_ext": ".txt",
+  "parser": "text_parser",
+  "encoding": "utf-8",
+  "document_hash": "ceb5ece1b5355958e0a5269d71247fed5291a1f593949c5608b0027ad0a99201",
+  "file_type_label": "txt",
+  "mime_type": "text/plain",
+  "magika_group": "text",
+  "embedding_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "parsed_at": "2026-04-18T09:27:12.174101+00:00"
+}

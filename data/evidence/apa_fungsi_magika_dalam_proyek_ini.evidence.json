@@ -1,0 +1,36 @@
+{
+  "query": "apa fungsi Magika dalam proyek ini?",
+  "created_at": "2026-04-18T14:48:20.553694+00:00",
+  "sources": [
+    {
+      "source_name": "project-notes.md",
+      "chunk_index": 0,
+      "parser": "text_parser",
+      "retrieval": "vector+fts",
+      "score": 0.7945,
+      "distance": 0.4444,
+      "bm25_score": -3.0089
+    }
+  ],
+  "important_facts": [
+    {
+      "text": "# AI RAG Lokal Proyek ini memakai Magika sebagai file router, OpenDataLoader PDF sebagai parser PDF, FastEmbed sebagai embedder, dan Chroma sebagai vector database.",
+      "source_name": "project-notes.md",
+      "parser": "text_parser",
+      "chunk_index": 0,
+      "retrieval": "vector+fts",
+      "score": 0.7945
+    }
+  ],
+  "important_quotes": [
+    {
+      "quote": "# AI RAG Lokal\n\nProyek ini memakai Magika sebagai file router, OpenDataLoader PDF sebagai parser PDF, FastEmbed sebagai embedder, dan Chroma sebagai vector database.\n\nPipeline utama adalah file masuk, deteksi tipe file, parsing, chunking, embedding, penyimpanan ke Chroma, retrieval, lalu jawaban dari model Qwen.\n\nMini Graph Layer digunakan untuk memetakan hubungan antara dokumen, chunk, parser, filetype, dan term penting.",
+      "source_name": "project-notes.md",
+      "chunk_index": 0,
+      "retrieval": "vector+fts",
+      "score": 0.7945
+    }
+  ],
+  "uncertainty": [],
+  "llm_instruction": "Jawab hanya berdasarkan evidence pack ini. Jika evidence tidak cukup, nyatakan bahwa dokumen belum cukup mendukung jawaban."
+}

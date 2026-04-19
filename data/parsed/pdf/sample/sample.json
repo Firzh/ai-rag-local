@@ -1,0 +1,65 @@
+{
+  "file name" : "sample.pdf",
+  "number of pages" : 1,
+  "author" : "Philip Hutchison",
+  "title" : "sample",
+  "creation date" : "D:20080701052447Z00'00'",
+  "modification date" : "D:20080701052447Z00'00'",
+  "kids" : [ {
+    "type" : "paragraph",
+    "id" : 2,
+    "page number" : 1,
+    "bounding box" : [ 72.0, 678.332, 252.648, 719.516 ],
+    "font" : "HelveticaNeue-UltraLight",
+    "font size" : 36.0,
+    "text color" : "[0.3019608, 0.3019608, 0.3019608]",
+    "content" : "Sample PDF"
+  }, {
+    "type" : "heading",
+    "id" : 3,
+    "level" : "Doctitle",
+    "page number" : 1,
+    "bounding box" : [ 72.0, 656.166, 356.004, 677.118 ],
+    "heading level" : 1,
+    "font" : "HelveticaNeue-LightItalic",
+    "font size" : 18.0,
+    "text color" : "[0.0, 0.0, 0.0]",
+    "content" : "This is a simple PDF ﬁle. Fun fun fun."
+  }, {
+    "type" : "paragraph",
+    "id" : 4,
+    "page number" : 1,
+    "bounding box" : [ 72.0, 476.444, 540.168, 640.604 ],
+    "font" : "HelveticaNeue-Light",
+    "font size" : 12.0,
+    "text color" : "[0.0, 0.0, 0.0]",
+    "content" : "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Phasellus facilisis odio sed mi. Curabitur suscipit. Nullam vel nisi. Etiam semper ipsum ut lectus. Proin aliquam, erat eget pharetra commodo, eros mi condimentum quam, sed commodo justo quam ut velit. Integer a erat. Cras laoreet ligula cursus enim. Aenean scelerisque velit et tellus. Vestibulum dictum aliquet sem. Nulla facilisi. Vestibulum accumsan ante vitae elit. Nulla erat dolor, blandit in, rutrum quis, semper pulvinar, enim. Nullam varius congue risus. Vivamus sollicitudin, metus ut interdum eleifend, nisi tellus pellentesque elit, tristique accumsan eros quam et risus. Suspendisse libero odio, mattis sit amet, aliquet eget, hendrerit vel, nulla. Sed vitae augue. Aliquam erat volutpat. Aliquam feugiat vulputate nisl. Suspendisse quis nulla pretium ante pretium mollis. Proin velit ligula, sagittis at, egestas a, pulvinar quis, nisl."
+  }, {
+    "type" : "paragraph",
+    "id" : 5,
+    "page number" : 1,
+    "bounding box" : [ 72.0, 341.444, 540.108, 460.604 ],
+    "font" : "HelveticaNeue-Light",
+    "font size" : 12.0,
+    "text color" : "[0.0, 0.0, 0.0]",
+    "content" : "Pellentesque sit amet lectus. Praesent pulvinar, nunc quis iaculis sagittis, justo quam lobortis tortor, sed vestibulum dui metus venenatis est. Nunc cursus ligula. Nulla facilisi. Phasellus ullamcorper consectetuer ante. Duis tincidunt, urna id condimentum luctus, nibh ante vulputate sapien, id sagittis massa orci ut enim. Pellentesque vestibulum convallis sem. Nulla consequat quam ut nisl. Nullam est. Curabitur tincidunt dapibus lorem. Proin velit turpis, scelerisque sit amet, iaculis nec, rhoncus ac, ipsum. Phasellus lorem arcu, feugiat eu, gravida eu, consequat molestie, ipsum. Nullam vel est ut ipsum volutpat feugiat. Aenean pellentesque."
+  }, {
+    "type" : "paragraph",
+    "id" : 6,
+    "page number" : 1,
+    "bounding box" : [ 72.0, 191.444, 540.12, 325.604 ],
+    "font" : "HelveticaNeue-Light",
+    "font size" : 12.0,
+    "text color" : "[0.0, 0.0, 0.0]",
+    "content" : "In mauris. Pellentesque dui nisi, iaculis eu, rhoncus in, venenatis ac, ante. Ut odio justo, scelerisque vel, facilisis non, commodo a, pede. Cras nec massa sit amet tortor volutpat varius. Donec lacinia, neque a luctus aliquet, pede massa imperdiet ante, at varius lorem pede sed sapien. Fusce erat nibh, aliquet in, eleifend eget, commodo eget, erat. Fusce consectetuer. Cras risus tortor, porttitor nec, tristique sed, convallis semper, eros. Fusce vulputate ipsum a mauris. Phasellus mollis. Curabitur sed urna. Aliquam nec sapien non nibh pulvinar convallis. Vivamus facilisis augue quis quam. Proin cursus aliquet metus. Suspendisse lacinia. Nulla at tellus ac turpis eleifend scelerisque. Maecenas a pede vitae enim commodo interdum. Donec odio. Sed sollicitudin dui vitae justo."
+  }, {
+    "type" : "paragraph",
+    "id" : 7,
+    "page number" : 1,
+    "bounding box" : [ 72.0, 86.444, 540.096, 175.604 ],
+    "font" : "HelveticaNeue-Light",
+    "font size" : 12.0,
+    "text color" : "[0.0, 0.0, 0.0]",
+    "content" : "Morbi elit nunc, facilisis a, mollis a, molestie at, lectus. Suspendisse eget mauris eu tellus molestie cursus. Duis ut magna at justo dignissim condimentum. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Vivamus varius. Ut sit amet diam suscipit mauris ornare aliquam. Sed varius. Duis arcu. Etiam tristique massa eget dui. Phasellus congue. Aenean est erat, tincidunt eget, venenatis quis, commodo at, quam."
+  } ]
+}

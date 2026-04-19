@@ -1,0 +1,69 @@
+{"id": "doc:229defbb0cee6f02673a5cde290d0673e75a0dc31cec43989c8ab2a4eca7e1bb", "type": "document", "label": "sample.pdf", "properties": {"source_name": "sample.pdf", "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\sample.pdf", "document_hash": "229defbb0cee6f02673a5cde290d0673e75a0dc31cec43989c8ab2a4eca7e1bb"}}
+{"id": "parser:8fbe3abaee7b9bf2bedc4910", "type": "parser", "label": "opendataloader_pdf", "properties": {"parser": "opendataloader_pdf"}}
+{"id": "filetype:91ed0f7cdaa1385ebdcc5d2d", "type": "filetype", "label": "application/pdf", "properties": {"mime_type": "application/pdf"}}
+{"id": "chunk:e019940b53aeaf2ae95dcc727faaa9b5cd50242f8283a2c8f624a154aded0053", "type": "chunk", "label": "sample.pdf#chunk-0", "properties": {"source_name": "sample.pdf", "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\sample.pdf", "document_hash": "229defbb0cee6f02673a5cde290d0673e75a0dc31cec43989c8ab2a4eca7e1bb", "chunk_index": 0, "text_preview": "--- PAGE 1 ---\n\nSample PDF\n\n# This is a simple PDF ﬁle. Fun fun fun.\n\nLorem ipsum dolor sit amet, consectetuer adipiscing elit. Phasellus facilisis odio sed mi. Curabitur suscipit. Nullam vel nisi. Etiam semper ipsum ut lectus. Proin aliquam, erat eget pharetra commodo, eros mi condimentum quam, sed commodo justo quam ut velit. Integer a erat. Cras laoreet ligula cursus enim. Aenean scelerisque velit et tellus. Vestibulum dictum aliquet sem. Nulla facilisi. Vestibulum accumsan ante vitae elit. N"}}
+{"id": "page:229defbb0cee6f02673a5cde290d0673e75a0dc31cec43989c8ab2a4eca7e1bb:1", "type": "page", "label": "sample.pdf page 1", "properties": {"source_name": "sample.pdf", "document_hash": "229defbb0cee6f02673a5cde290d0673e75a0dc31cec43989c8ab2a4eca7e1bb", "page": "1"}}
+{"id": "term:e083bcc078b96ea652eeab2d", "type": "term", "label": "elit", "properties": {"term": "elit"}}
+{"id": "term:de1ac39240cf08510fe03c01", "type": "term", "label": "aliquam", "properties": {"term": "aliquam"}}
+{"id": "term:87aa4e6ae23ebf93e9b357cc", "type": "term", "label": "odio", "properties": {"term": "odio"}}
+{"id": "term:01c6f1768665aabc2dca81c7", "type": "term", "label": "nullam", "properties": {"term": "nullam"}}
+{"id": "term:72ddd2cc4594aa1134b8eaa9", "type": "term", "label": "nisi", "properties": {"term": "nisi"}}
+{"id": "term:59aa9f6655437abe7a29fd10", "type": "term", "label": "semper", "properties": {"term": "semper"}}
+{"id": "term:4172c773526e604dc8ba808d", "type": "term", "label": "eget", "properties": {"term": "eget"}}
+{"id": "term:0741d778caf60eb3f7654af5", "type": "term", "label": "eros", "properties": {"term": "eros"}}
+{"id": "term:0d70cb19155f9e14a81ad11b", "type": "term", "label": "velit", "properties": {"term": "velit"}}
+{"id": "term:76d7862a92dfbab858fdda49", "type": "term", "label": "enim", "properties": {"term": "enim"}}
+{"id": "term:1b0616a189d4a4b3d58777e1", "type": "term", "label": "tellus", "properties": {"term": "tellus"}}
+{"id": "term:e1a05ccdaffd9eab50416d85", "type": "term", "label": "aliquet", "properties": {"term": "aliquet"}}
+{"id": "chunk:a381e8e643d2fe73d5ecc1288af033cb688921693c6003f98233e51cd22fb672", "type": "chunk", "label": "sample.pdf#chunk-1", "properties": {"source_name": "sample.pdf", "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\sample.pdf", "document_hash": "229defbb0cee6f02673a5cde290d0673e75a0dc31cec43989c8ab2a4eca7e1bb", "chunk_index": 1, "text_preview": "el, nulla. Sed vitae augue. Aliquam erat volutpat. Aliquam feugiat vulputate nisl. Suspendisse quis nulla pretium ante pretium mollis. Proin velit ligula, sagittis at, egestas a, pulvinar quis, nisl.\n\nPellentesque sit amet lectus. Praesent pulvinar, nunc quis iaculis sagittis, justo quam lobortis tortor, sed vestibulum dui metus venenatis est. Nunc cursus ligula. Nulla facilisi. Phasellus ullamcorper consectetuer ante. Duis tincidunt, urna id condimentum luctus, nibh ante vulputate sapien, id sa"}}
+{"id": "term:272ed47287600836e7ac6ff0", "type": "term", "label": "feugiat", "properties": {"term": "feugiat"}}
+{"id": "term:91cb47cb54c0ec967d06e6f0", "type": "term", "label": "nisl", "properties": {"term": "nisl"}}
+{"id": "term:bac53a2cdcbf0a3d8fc1b1e5", "type": "term", "label": "quis", "properties": {"term": "quis"}}
+{"id": "term:d968e224a0e0dbfbb51fc70c", "type": "term", "label": "ante", "properties": {"term": "ante"}}
+{"id": "term:c7239432e67d8b2a7f1137f9", "type": "term", "label": "sagittis", "properties": {"term": "sagittis"}}
+{"id": "term:02cda8c8cfa40ee5d8c8787e", "type": "term", "label": "iaculis", "properties": {"term": "iaculis"}}
+{"id": "term:bcd9c7ef83dd881de57b5000", "type": "term", "label": "volutpat", "properties": {"term": "volutpat"}}
+{"id": "term:5bc67d321759fcc8e51ab71d", "type": "term", "label": "vulputate", "properties": {"term": "vulputate"}}
+{"id": "term:cc1ab40f77f6af5e820148f0", "type": "term", "label": "pretium", "properties": {"term": "pretium"}}
+{"id": "term:5cdfd4f631316d8d7c9e5926", "type": "term", "label": "proin", "properties": {"term": "proin"}}
+{"id": "chunk:f6f6831b4bf9319682cac05b379f7548439a35d0e4dc799359f9642219707b04", "type": "chunk", "label": "sample.pdf#chunk-2", "properties": {"source_name": "sample.pdf", "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\sample.pdf", "document_hash": "229defbb0cee6f02673a5cde290d0673e75a0dc31cec43989c8ab2a4eca7e1bb", "chunk_index": 2, "text_preview": "e, ipsum. Nullam vel est ut ipsum volutpat feugiat. Aenean pellentesque.\n\nIn mauris. Pellentesque dui nisi, iaculis eu, rhoncus in, venenatis ac, ante. Ut odio justo, scelerisque vel, facilisis non, commodo a, pede. Cras nec massa sit amet tortor volutpat varius. Donec lacinia, neque a luctus aliquet, pede massa imperdiet ante, at varius lorem pede sed sapien. Fusce erat nibh, aliquet in, eleifend eget, commodo eget, erat. Fusce consectetuer. Cras risus tortor, porttitor nec, tristique sed, conv"}}
+{"id": "term:63dfbc4b4d18bbd46c8839bf", "type": "term", "label": "pede", "properties": {"term": "pede"}}
+{"id": "term:77049c6945c2130eb2c75a02", "type": "term", "label": "facilisis", "properties": {"term": "facilisis"}}
+{"id": "term:3af48d4e908d5118d0cda5ba", "type": "term", "label": "fusce", "properties": {"term": "fusce"}}
+{"id": "term:38b190e5fac5c3009bd46b8f", "type": "term", "label": "mauris", "properties": {"term": "mauris"}}
+{"id": "term:13ccdb4260cef6c73ab96a15", "type": "term", "label": "justo", "properties": {"term": "justo"}}
+{"id": "term:7655feb4a332cd540d210b9a", "type": "term", "label": "cras", "properties": {"term": "cras"}}
+{"id": "term:67f9390708de76a98e5ab5b5", "type": "term", "label": "massa", "properties": {"term": "massa"}}
+{"id": "term:53aa959e01830333d8dc490d", "type": "term", "label": "tortor", "properties": {"term": "tortor"}}
+{"id": "chunk:56de8e97669f07da5c631c1ef5662c6a3f1835eef51bebacef7ed9af6ecd495d", "type": "chunk", "label": "sample.pdf#chunk-3", "properties": {"source_name": "sample.pdf", "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\sample.pdf", "document_hash": "229defbb0cee6f02673a5cde290d0673e75a0dc31cec43989c8ab2a4eca7e1bb", "chunk_index": 3, "text_preview": "pede vitae enim commodo interdum. Donec odio. Sed sollicitudin dui vitae justo.\n\nMorbi elit nunc, facilisis a, mollis a, molestie at, lectus. Suspendisse eget mauris eu tellus molestie cursus. Duis ut magna at justo dignissim condimentum. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Vivamus varius. Ut sit amet diam suscipit mauris ornare aliquam. Sed varius. Duis arcu. Etiam tristique massa eget dui. Phasellus congue. Aenean est erat, tincidunt eget, vene"}}
+{"id": "term:a228fa32cc863dd0b0dd19b4", "type": "term", "label": "vitae", "properties": {"term": "vitae"}}
+{"id": "term:180590db6a749bb2e01024d1", "type": "term", "label": "molestie", "properties": {"term": "molestie"}}
+{"id": "term:de69852cf203e068a48107b4", "type": "term", "label": "duis", "properties": {"term": "duis"}}
+{"id": "term:662c7099722163057e67345a", "type": "term", "label": "varius", "properties": {"term": "varius"}}
+{"id": "term:d0b3389151383e0934a2c878", "type": "term", "label": "interdum", "properties": {"term": "interdum"}}
+{"id": "term:6d1d6c4a2b356afaf8278ecd", "type": "term", "label": "donec", "properties": {"term": "donec"}}
+{"id": "doc:ceb5ece1b5355958e0a5269d71247fed5291a1f593949c5608b0027ad0a99201", "type": "document", "label": "test-rag.txt", "properties": {"source_name": "test-rag.txt", "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\test-rag.txt", "document_hash": "ceb5ece1b5355958e0a5269d71247fed5291a1f593949c5608b0027ad0a99201"}}
+{"id": "parser:4d023ff72264b4e1cf73f46f", "type": "parser", "label": "text_parser", "properties": {"parser": "text_parser"}}
+{"id": "filetype:dc23933049d8b06808e15916", "type": "filetype", "label": "text/plain", "properties": {"mime_type": "text/plain"}}
+{"id": "chunk:4dd0826e5d6500913bf45d14cf196e917419b6c8ec47549c24e06a1ce868f889", "type": "chunk", "label": "test-rag.txt#chunk-0", "properties": {"source_name": "test-rag.txt", "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\test-rag.txt", "document_hash": "ceb5ece1b5355958e0a5269d71247fed5291a1f593949c5608b0027ad0a99201", "chunk_index": 0, "text_preview": "RAG lokal adalah sistem retrieval augmented generation berbasis dokumen lokal."}}
+{"id": "term:d1e9fabb67b9ba42eb04b50f", "type": "term", "label": "lokal", "properties": {"term": "lokal"}}
+{"id": "term:e61227c5734d20585afef477", "type": "term", "label": "sistem", "properties": {"term": "sistem"}}
+{"id": "term:6e51d6a3d90b6a3243d38e6d", "type": "term", "label": "retrieval", "properties": {"term": "retrieval"}}
+{"id": "term:0149895b4afa2bfb28b920fe", "type": "term", "label": "augmented", "properties": {"term": "augmented"}}
+{"id": "term:e661f4c935e8a5a83349afb5", "type": "term", "label": "generation", "properties": {"term": "generation"}}
+{"id": "term:c1e0be1b5bbec8703c468d2f", "type": "term", "label": "berbasis", "properties": {"term": "berbasis"}}
+{"id": "term:95b6ee093f06e41f08100116", "type": "term", "label": "dokumen", "properties": {"term": "dokumen"}}
+{"id": "doc:bf52b6114a5e98086bc560716085b9d771133062fa84d71d3e9ddd99462d12a5", "type": "document", "label": "project-notes.md", "properties": {"source_name": "project-notes.md", "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\project-notes.md", "document_hash": "bf52b6114a5e98086bc560716085b9d771133062fa84d71d3e9ddd99462d12a5"}}
+{"id": "filetype:3e0188e2ccabdcacf4d27e2b", "type": "filetype", "label": "text/markdown", "properties": {"mime_type": "text/markdown"}}
+{"id": "chunk:a276ad45f2dacaee293e3a5b92cee89a95d481ca61777a9090b033e56b14b2d7", "type": "chunk", "label": "project-notes.md#chunk-0", "properties": {"source_name": "project-notes.md", "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\project-notes.md", "document_hash": "bf52b6114a5e98086bc560716085b9d771133062fa84d71d3e9ddd99462d12a5", "chunk_index": 0, "text_preview": "# AI RAG Lokal\n\nProyek ini memakai Magika sebagai file router, OpenDataLoader PDF sebagai parser PDF, FastEmbed sebagai embedder, dan Chroma sebagai vector database.\n\nPipeline utama adalah file masuk, deteksi tipe file, parsing, chunking, embedding, penyimpanan ke Chroma, retrieval, lalu jawaban dari model Qwen.\n\nMini Graph Layer digunakan untuk memetakan hubungan antara dokumen, chunk, parser, filetype, dan term penting."}}
+{"id": "term:3b9c358f36f0a31b6ad3e14f", "type": "term", "label": "file", "properties": {"term": "file"}}
+{"id": "term:b17d45121150928f2146af49", "type": "term", "label": "parser", "properties": {"term": "parser"}}
+{"id": "term:49d765a2e4d7bc6d3fe07b17", "type": "term", "label": "chroma", "properties": {"term": "chroma"}}
+{"id": "term:d7729ea8b3a8cbd43b85a491", "type": "term", "label": "proyek", "properties": {"term": "proyek"}}
+{"id": "term:224b6884e81e8ddf6977307e", "type": "term", "label": "memakai", "properties": {"term": "memakai"}}
+{"id": "term:86b5d57e133b0062f39757b4", "type": "term", "label": "magika", "properties": {"term": "magika"}}
+{"id": "term:74c95604043427f0bee1d0e1", "type": "term", "label": "router", "properties": {"term": "router"}}
+{"id": "term:2ffc9c3150f22e9d369b0a4b", "type": "term", "label": "opendataloader", "properties": {"term": "opendataloader"}}
+{"id": "term:4e55c01d4190f1d5ec2fcf39", "type": "term", "label": "fastembed", "properties": {"term": "fastembed"}}
+{"id": "term:87c2de5924ee7b220a8f496b", "type": "term", "label": "embedder", "properties": {"term": "embedder"}}
+{"id": "term:b0d51c58c8b9c1f458fadf16", "type": "term", "label": "vector", "properties": {"term": "vector"}}

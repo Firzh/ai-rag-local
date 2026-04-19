@@ -1,0 +1,13 @@
+{
+  "source_path": "F:\\AI-Models\\ai-rag-local\\data\\inbox\\project-notes.md",
+  "source_name": "project-notes.md",
+  "file_ext": ".md",
+  "parser": "text_parser",
+  "encoding": "utf-8",
+  "document_hash": "bf52b6114a5e98086bc560716085b9d771133062fa84d71d3e9ddd99462d12a5",
+  "file_type_label": "markdown",
+  "mime_type": "text/markdown",
+  "magika_group": "text",
+  "embedding_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "parsed_at": "2026-04-18T10:09:47.214020+00:00"
+}

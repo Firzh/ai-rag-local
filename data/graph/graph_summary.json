@@ -1,0 +1,22 @@
+{
+  "total_nodes": 69,
+  "total_edges": 84,
+  "node_types": {
+    "document": 3,
+    "parser": 2,
+    "filetype": 3,
+    "chunk": 6,
+    "page": 1,
+    "term": 54
+  },
+  "edge_types": {
+    "PARSED_BY": 3,
+    "HAS_FILETYPE": 3,
+    "CONTAINS": 7,
+    "HAS_PAGE": 1,
+    "MENTIONS": 67,
+    "NEXT_CHUNK": 3
+  },
+  "nodes_path": "F:\\AI-Models\\ai-rag-local\\data\\graph\\nodes.jsonl",
+  "edges_path": "F:\\AI-Models\\ai-rag-local\\data\\graph\\edges.jsonl"
+}
