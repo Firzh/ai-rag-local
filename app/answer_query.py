@@ -12,16 +12,19 @@ from app.config import settings
 from app.answer_postprocess import clean_answer
 from app.answer_quality import is_answer_artifact_like
 from app.answer_evaluator import evaluate_answer_quality
+from app.cache.query_cache import QueryCache, query_hash
 from app.compression.context_compressor import ContextCompressor
 from app.extractive_answer import build_extractive_answer
-from app.prompt_builder import build_system_prompt, build_user_prompt
 from app.llm.clients import get_llm_client, LLMClientError, LLMProviderError
 from app.llm.fallback_policy import try_ollama_fallback, human_action_message
+from app.llm.provider_errors import ERROR_RATE_LIMITED
+from app.math_guard import try_calculate_query
+from app.prompt_builder import build_system_prompt, build_user_prompt
+from app.quality_store import AnswerQualityStore
+from app.usage.api_usage_store import ApiUsageStore
 from app.verification.verifier import EvidenceVerifier
 from app.verification.llm_judge import QwenJudgeVerifier
 from app.verification.combined_verifier import combine_verification_results
-from app.quality_store import AnswerQualityStore
-from app.math_guard import try_calculate_query
 
 console = Console()
 
@@ -234,6 +237,68 @@ def print_provider_error(exc: LLMProviderError) -> None:
 
     console.print(f"[yellow]Action:[/yellow] {human_action_message(exc)}")
 
+def active_usage_provider_model() -> tuple[str, str]:
+    provider = settings.llm_provider.lower().strip()
+
+    if provider == "openai_compatible":
+        return "openai_compatible", settings.openai_compat_model
+
+    if provider == "ollama":
+        return "ollama", settings.ollama_model
+
+    return provider, settings.ollama_model
+
+def handle_cached_query(query: str) -> bool:
+    if not settings.api_cache_enabled:
+        return False
+
+    cache = QueryCache()
+    cached = cache.get(query)
+
+    if cached is None:
+        return False
+
+    usage_provider, usage_model = active_usage_provider_model()
+
+    ApiUsageStore().record_call(
+        provider=usage_provider,
+        model=usage_model,
+        success=True,
+        cache_hit=True,
+        query_hash=query_hash(query),
+        metadata={
+            "source": "query_cache",
+            "cached_provider": cached.provider,
+            "cached_model": cached.model,
+            "cache_created_at": cached.created_at,
+            "cache_expires_at": cached.expires_at,
+        },
+    )
+
+    record = {
+        **cached.record,
+        "query": query,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "cache_hit": True,
+        "cache_provider": cached.provider,
+        "cache_model": cached.model,
+        "cache_counted_as_provider": usage_provider,
+        "cache_counted_as_model": usage_model,
+        "cache_created_at": cached.created_at,
+        "cache_expires_at": cached.expires_at,
+    }
+
+    json_path, md_path = save_answer_record(record)
+
+    console.print(f"\n[bold]Query:[/bold] {query}")
+    console.print("[green]Cache hit:[/green] query_cache")
+    console.print(f"[green]Cache counted as:[/green] {usage_provider} / {usage_model}")
+    console.print("\n[bold green]Answer[/bold green]\n")
+    console.print(cached.answer)
+    console.print(f"\n[green]Saved answer JSON:[/green] {json_path}")
+    console.print(f"[green]Saved answer MD:[/green] {md_path}")
+
+    return True
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -248,6 +313,9 @@ def main() -> None:
         return
 
     if handle_calculator_query(query):
+        return
+    
+    if handle_cached_query(query):
         return
     
     compressor = ContextCompressor()
@@ -296,10 +364,35 @@ def main() -> None:
             console.print(f"[green]Fallback used:[/green] {settings.fallback_provider}")
             console.print(f"[green]Fallback reason:[/green] {fallback.reason}")
         else:
-            console.print(f"[red]Fallback not used:[/red] {fallback.reason}")
-            console.print("\n[yellow]Gunakan --dry-run untuk cek prompt tanpa memanggil model.[/yellow]")
-            return
+            if (
+                exc.info.error_type == ERROR_RATE_LIMITED
+                and settings.local_only_on_rate_limit
+            ):
+                fallback_answer = build_extractive_answer(evidence_pack)
+                fallback_answer = clean_answer(fallback_answer, evidence_pack=evidence_pack)
 
+                result = type(
+                    "ToolFallbackResult",
+                    (),
+                    {
+                        "text": fallback_answer,
+                        "provider": "local_only",
+                        "model": "extractive_fallback",
+                        "raw": {},
+                    },
+                )()
+
+                fallback_used = True
+                fallback_message = "Kuota Gemini harian habis, jawaban hanya berdasarkan retrieval lokal."
+                fallback_reason = "rate_limited_local_only"
+
+                console.print("[yellow]Kuota Gemini harian habis, jawaban hanya berdasarkan retrieval lokal.[/yellow]")
+
+            else:
+                console.print(f"[red]Fallback not used:[/red] {fallback.reason}")
+                console.print("\n[yellow]Gunakan --dry-run untuk cek prompt tanpa memanggil model.[/yellow]")
+                return
+            
     except LLMClientError as exc:
         console.print(f"[red]LLM error:[/red] {exc}")
         console.print("\n[yellow]Gunakan --dry-run untuk cek prompt tanpa memanggil model.[/yellow]")
@@ -413,6 +506,19 @@ def main() -> None:
         "quality": quality,
         "quality_id": quality_id,
     }
+
+    if (
+        settings.api_cache_enabled
+        and result.provider in {"openai_compatible", "local_only", "ollama"}
+        and quality.get("quality_pass")
+    ):
+        QueryCache().set(
+            query=query,
+            answer=final_answer,
+            provider=result.provider,
+            model=result.model,
+            record=record,
+        )
 
     json_path, md_path = save_answer_record(record)
 

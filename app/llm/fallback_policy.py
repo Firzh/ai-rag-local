@@ -44,7 +44,7 @@ def human_action_message(error: LLMProviderError) -> str:
     error_type = error.info.error_type
 
     if error_type == ERROR_RATE_LIMITED:
-        return "Kuota atau rate limit API tercapai. Sistem mencoba fallback ke model lokal."
+        return "Kuota Gemini harian habis, jawaban dialihkan ke fallback lokal."
 
     if error_type == ERROR_AUTH:
         return "API key tidak valid, tidak aktif, atau tidak memiliki izin."

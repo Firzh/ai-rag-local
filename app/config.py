@@ -96,6 +96,20 @@ class Settings:
     distance_cutoff: float
     score_cutoff: float
 
+    api_usage_db: Path
+    api_cache_enabled: bool
+    api_cache_ttl_hours: int
+    api_quota_enabled: bool
+    api_quota_provider: str
+    api_quota_model: str
+    api_rpd_limit: int
+    api_rpm_limit: int
+    api_tpm_limit: int
+    api_daily_request_warn: int
+    api_daily_request_hard_warn: int
+    api_disable_on_rpd_exceeded: bool
+    api_warn_on_start: bool
+
     model_mode: str
     ollama_model_rag: str
     ollama_model_coder: str
@@ -217,6 +231,22 @@ settings = Settings(
     provider_error_verbose=env_bool("RAG_PROVIDER_ERROR_VERBOSE", True),
     local_only_on_rate_limit=env_bool("RAG_LOCAL_ONLY_ON_RATE_LIMIT", True),
 
+    api_cache_enabled=env_bool("RAG_API_CACHE_ENABLED", True),
+    api_cache_ttl_hours=env_int("RAG_API_CACHE_TTL_HOURS", 24),
+
+    api_quota_enabled=env_bool("RAG_API_QUOTA_ENABLED", True),
+    api_quota_provider=env_str("RAG_API_QUOTA_PROVIDER", "openai_compatible"),
+    api_quota_model=env_str("RAG_API_QUOTA_MODEL", env_str("RAG_OPENAI_COMPAT_MODEL", "")),
+
+    api_rpd_limit=env_int("RAG_GEMINI_RPD_LIMIT", 20),
+    api_rpm_limit=env_int("RAG_GEMINI_RPM_LIMIT", 5),
+    api_tpm_limit=env_int("RAG_GEMINI_TPM_LIMIT", 250000),
+
+    api_daily_request_warn=env_int("RAG_API_DAILY_REQUEST_WARN", 15),
+    api_daily_request_hard_warn=env_int("RAG_API_DAILY_REQUEST_HARD_WARN", 18),
+    api_disable_on_rpd_exceeded=env_bool("RAG_API_DISABLE_ON_RPD_EXCEEDED", True),
+    api_warn_on_start=env_bool("RAG_API_WARN_ON_START", True),
+
     ollama_base_url=env_str("RAG_OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
     ollama_model_rag=env_str("RAG_OLLAMA_MODEL_RAG", "qwen-rag-1.5b:latest"),
     ollama_model_coder=env_str("RAG_OLLAMA_MODEL_CODER", "qwen-coder-1.5b:latest"),
@@ -236,6 +266,7 @@ settings = Settings(
     use_extractive_fallback=env_bool("RAG_USE_EXTRACTIVE_FALLBACK", True),
     quality_dir=env_path("RAG_QUALITY_DIR", "data/quality"),
     quality_db=env_path("RAG_QUALITY_DB", "data/quality/answer_quality.sqlite3"),
+    api_usage_db=env_path("RAG_API_USAGE_DB", "data/quality/api_usage.sqlite3"),
     enable_quality_store=env_bool("RAG_ENABLE_QUALITY_STORE", True),
     use_quality_examples=env_bool("RAG_USE_QUALITY_EXAMPLES", False),
     verification_audit_enabled=env_bool("RAG_VERIFICATION_AUDIT_ENABLED", True),
