@@ -5,6 +5,14 @@ from typing import Any
 import requests
 
 from app.config import settings
+from app.llm.provider_errors import (
+    ProviderErrorInfo,
+    classify_http_status,
+    classify_provider_payload,
+    extract_error_message,
+    safe_excerpt,
+    ERROR_NETWORK,
+)
 
 
 @dataclass
@@ -22,7 +30,18 @@ class LLMClientError(RuntimeError):
 class BaseLLMClient:
     def generate(self, system_prompt: str, user_prompt: str) -> LLMResult:
         raise NotImplementedError
+    
+class LLMProviderError(LLMClientError):
+    def __init__(self, info: ProviderErrorInfo) -> None:
+        self.info = info
 
+        status = f"HTTP {info.status_code}" if info.status_code else "no HTTP status"
+        message = (
+            f"{info.provider} provider error ({info.error_type}, {status}) "
+            f"for model {info.model}: {info.message}"
+        )
+
+        super().__init__(message)
 
 class OllamaClient(BaseLLMClient):
     def __init__(self) -> None:
@@ -73,14 +92,28 @@ class OllamaClient(BaseLLMClient):
         try:
             response = requests.post(url, json=payload, timeout=300)
         except requests.RequestException as exc:
-            raise LLMClientError(
-                f"Gagal menghubungi Ollama di {url}. "
-                f"Pastikan Ollama berjalan dan base URL benar."
+            raise LLMProviderError(
+                ProviderErrorInfo(
+                    provider="ollama",
+                    model=self.model,
+                    error_type=ERROR_NETWORK,
+                    status_code=None,
+                    message=str(exc),
+                    raw_excerpt=safe_excerpt(str(exc)),
+                )
             ) from exc
 
         if response.status_code >= 400:
-            raise LLMClientError(
-                f"Ollama error {response.status_code}: {response.text}"
+            error_type = classify_http_status(response.status_code)
+            raise LLMProviderError(
+                ProviderErrorInfo(
+                    provider="ollama",
+                    model=self.model,
+                    error_type=error_type,
+                    status_code=response.status_code,
+                    message=response.text,
+                    raw_excerpt=safe_excerpt(response.text),
+                )
             )
 
         data = response.json()
@@ -131,13 +164,34 @@ class OpenAICompatibleClient(BaseLLMClient):
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=300)
         except requests.RequestException as exc:
-            raise LLMClientError(
-                f"Gagal menghubungi OpenAI-compatible server di {url}."
+            raise LLMProviderError(
+                ProviderErrorInfo(
+                    provider="openai_compatible",
+                    model=self.model,
+                    error_type=ERROR_NETWORK,
+                    status_code=None,
+                    message=str(exc),
+                    raw_excerpt=safe_excerpt(str(exc)),
+                )
             ) from exc
 
         if response.status_code >= 400:
-            raise LLMClientError(
-                f"OpenAI-compatible server error {response.status_code}: {response.text}"
+            try:
+                payload = response.json()
+            except Exception:
+                payload = None
+
+            error_type = classify_provider_payload(response.status_code, payload)
+
+            raise LLMProviderError(
+                ProviderErrorInfo(
+                    provider="openai_compatible",
+                    model=self.model,
+                    error_type=error_type,
+                    status_code=response.status_code,
+                    message=extract_error_message(payload, response.text),
+                    raw_excerpt=safe_excerpt(response.text),
+                )
             )
 
         data = response.json()

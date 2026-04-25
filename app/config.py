@@ -113,6 +113,15 @@ class Settings:
     llm_max_tokens: int
     save_prompts: bool
 
+    enable_llm_fallback: bool
+    fallback_provider: str
+    fallback_ollama_model: str
+    fallback_on_rate_limit: bool
+    fallback_on_provider_unavailable: bool
+    fallback_on_config_error: bool
+    provider_error_verbose: bool
+    local_only_on_rate_limit: bool
+
     answer_max_chars: int
     use_extractive_fallback: bool
     enable_quality_store: bool
@@ -198,6 +207,15 @@ settings = Settings(
 
     llm_provider=env_str("RAG_LLM_PROVIDER", "ollama"),
     model_mode=env_str("RAG_MODEL_MODE", "rag"),
+    
+    enable_llm_fallback=env_bool("RAG_ENABLE_LLM_FALLBACK", True),
+    fallback_provider=env_str("RAG_FALLBACK_PROVIDER", "ollama"),
+    fallback_ollama_model=env_str("RAG_FALLBACK_OLLAMA_MODEL", env_str("RAG_OLLAMA_MODEL_GENERAL", "")),
+    fallback_on_rate_limit=env_bool("RAG_FALLBACK_ON_RATE_LIMIT", True),
+    fallback_on_provider_unavailable=env_bool("RAG_FALLBACK_ON_PROVIDER_UNAVAILABLE", True),
+    fallback_on_config_error=env_bool("RAG_FALLBACK_ON_CONFIG_ERROR", False),
+    provider_error_verbose=env_bool("RAG_PROVIDER_ERROR_VERBOSE", True),
+    local_only_on_rate_limit=env_bool("RAG_LOCAL_ONLY_ON_RATE_LIMIT", True),
 
     ollama_base_url=env_str("RAG_OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
     ollama_model_rag=env_str("RAG_OLLAMA_MODEL_RAG", "qwen-rag-1.5b:latest"),

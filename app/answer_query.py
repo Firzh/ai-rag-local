@@ -9,19 +9,19 @@ from pathlib import Path
 from rich.console import Console
 
 from app.config import settings
+from app.answer_postprocess import clean_answer
+from app.answer_quality import is_answer_artifact_like
+from app.answer_evaluator import evaluate_answer_quality
 from app.compression.context_compressor import ContextCompressor
+from app.extractive_answer import build_extractive_answer
 from app.prompt_builder import build_system_prompt, build_user_prompt
-from app.llm.clients import get_llm_client, LLMClientError
+from app.llm.clients import get_llm_client, LLMClientError, LLMProviderError
+from app.llm.fallback_policy import try_ollama_fallback, human_action_message
 from app.verification.verifier import EvidenceVerifier
 from app.verification.llm_judge import QwenJudgeVerifier
 from app.verification.combined_verifier import combine_verification_results
-from app.answer_postprocess import clean_answer
-from app.extractive_answer import build_extractive_answer
-from app.answer_quality import is_answer_artifact_like
-from app.answer_evaluator import evaluate_answer_quality
 from app.quality_store import AnswerQualityStore
 from app.math_guard import try_calculate_query
-
 
 console = Console()
 
@@ -208,6 +208,32 @@ def handle_calculator_query(query: str) -> bool:
 
     return True
 
+def provider_error_to_dict(exc: LLMProviderError | None) -> dict | None:
+    if exc is None:
+        return None
+
+    return {
+        "provider": exc.info.provider,
+        "model": exc.info.model,
+        "error_type": exc.info.error_type,
+        "status_code": exc.info.status_code,
+        "message": exc.info.message,
+        "raw_excerpt": exc.info.raw_excerpt,
+    }
+
+
+def print_provider_error(exc: LLMProviderError) -> None:
+    console.print("\n[bold red]Provider API error[/bold red]")
+    console.print(f"[yellow]Type:[/yellow] {exc.info.error_type}")
+    console.print(f"[yellow]Status:[/yellow] {exc.info.status_code}")
+    console.print(f"[yellow]Provider:[/yellow] {exc.info.provider}")
+    console.print(f"[yellow]Model:[/yellow] {exc.info.model}")
+
+    if settings.provider_error_verbose and exc.info.message:
+        console.print(f"[yellow]Message:[/yellow] {exc.info.message}")
+
+    console.print(f"[yellow]Action:[/yellow] {human_action_message(exc)}")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -242,9 +268,38 @@ def main() -> None:
         console.print(user_prompt)
         return
 
+    provider_error: LLMProviderError | None = None
+    fallback_used = False
+    fallback_message = ""
+    fallback_reason = ""
+
     try:
         client = get_llm_client()
         result = client.generate(system_prompt=system_prompt, user_prompt=user_prompt)
+
+    except LLMProviderError as exc:
+        provider_error = exc
+        print_provider_error(exc)
+
+        fallback = try_ollama_fallback(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            original_error=exc,
+        )
+
+        fallback_message = fallback.message
+        fallback_reason = fallback.reason
+
+        if fallback.used and fallback.result is not None:
+            result = fallback.result
+            fallback_used = True
+            console.print(f"[green]Fallback used:[/green] {settings.fallback_provider}")
+            console.print(f"[green]Fallback reason:[/green] {fallback.reason}")
+        else:
+            console.print(f"[red]Fallback not used:[/red] {fallback.reason}")
+            console.print("\n[yellow]Gunakan --dry-run untuk cek prompt tanpa memanggil model.[/yellow]")
+            return
+
     except LLMClientError as exc:
         console.print(f"[red]LLM error:[/red] {exc}")
         console.print("\n[yellow]Gunakan --dry-run untuk cek prompt tanpa memanggil model.[/yellow]")
@@ -272,6 +327,16 @@ def main() -> None:
         llm_verification=llm_verification,
     )
 
+    if provider_error is not None or fallback_used:
+        verification = {
+            **verification,
+            "provider_error": provider_error_to_dict(provider_error),
+            "fallback_used": fallback_used,
+            "fallback_provider": settings.fallback_provider if fallback_used else None,
+            "fallback_reason": fallback_reason,
+            "fallback_message": fallback_message,
+        }
+
     quality = evaluate_answer_quality(
         query=query,
         answer=final_answer,
@@ -294,6 +359,11 @@ def main() -> None:
                 "llm_model": result.model,
                 "raw_answer_preview": result.text[:500],
                 "qwen_judge_enabled": settings.qwen_judge_enabled,
+                "provider_error": provider_error_to_dict(provider_error),
+                "fallback_used": fallback_used,
+                "fallback_provider": settings.fallback_provider if fallback_used else None,
+                "fallback_reason": fallback_reason,
+                "fallback_message": fallback_message,
             },
         )
 
@@ -306,7 +376,9 @@ def main() -> None:
                 answer_quality_id=quality_id,
                 metadata={
                     "stage": "final",
-                    "fallback_used": bool(local_verification.get("fallback_used", False)),
+                    "fallback_used": bool(local_verification.get("fallback_used", False)) or fallback_used,
+                    "provider_fallback_used": fallback_used,
+                    "provider_error": provider_error_to_dict(provider_error),
                 },
             )
             quality_store.insert_verification_run(
@@ -318,6 +390,8 @@ def main() -> None:
                 metadata={
                     "stage": "final",
                     "enabled": settings.qwen_judge_enabled,
+                    "provider_fallback_used": fallback_used,
+                    "provider_error": provider_error_to_dict(provider_error),
                 },
             )
 
@@ -331,6 +405,11 @@ def main() -> None:
         "evidence_pack": evidence_pack,
         "llm_provider": result.provider,
         "llm_model": result.model,
+        "provider_error": provider_error_to_dict(provider_error),
+        "fallback_used": fallback_used,
+        "fallback_provider": settings.fallback_provider if fallback_used else None,
+        "fallback_reason": fallback_reason,
+        "fallback_message": fallback_message,
         "quality": quality,
         "quality_id": quality_id,
     }
@@ -342,6 +421,21 @@ def main() -> None:
 
     console.print("\n[bold]Verification[/bold]")
     console.print(verification)
+
+    if provider_error is not None:
+        console.print("\n[bold yellow]Provider Error[/bold yellow]")
+        console.print(provider_error_to_dict(provider_error))
+
+    if fallback_used:
+        console.print("\n[bold green]Provider Fallback[/bold green]")
+        console.print(
+            {
+                "fallback_used": fallback_used,
+                "fallback_provider": settings.fallback_provider,
+                "fallback_reason": fallback_reason,
+                "fallback_message": fallback_message,
+            }
+        )
 
     console.print("\n[bold]Quality[/bold]")
     console.print(quality)
