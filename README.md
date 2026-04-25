@@ -1,6 +1,6 @@
 # AI RAG Local
 
-**AI RAG Local** adalah proyek Retrieval-Augmented Generation lokal untuk menjalankan tanya jawab berbasis dokumen di komputer pribadi. Proyek ini dirancang agar tetap ringan pada perangkat terbatas, dengan fokus pada pipeline lokal: file routing, parsing, chunking, embedding, vector search, keyword search, graph ringan, context compression, answer generation, verifier, dan quality memory.
+AI RAG Local adalah proyek **Retrieval-Augmented Generation lokal** untuk menjalankan tanya jawab berbasis dokumen di komputer pribadi. Sistem dirancang ringan, modular, dan dapat diaudit melalui pipeline lokal: file routing, parsing, chunking, embedding, vector search, keyword search, mini graph, context compression, evidence pack, answer generation, verifier, dan answer quality store.
 
 Repository: `Firzh/ai-rag-local`  
 Target awal: Windows + Python virtual environment + Ollama lokal.
@@ -11,21 +11,45 @@ Target awal: Windows + Python virtual environment + Ollama lokal.
 
 Tujuan utama proyek ini adalah membangun sistem RAG lokal yang:
 
-1. dapat membaca dokumen lokal;
+1. membaca dokumen lokal dari folder kerja;
 2. memecah dokumen menjadi chunk;
 3. membuat embedding lokal;
 4. menyimpan embedding ke Chroma;
-5. mendukung pencarian hybrid melalui vector search dan SQLite FTS5;
-6. membangun konteks pendek melalui Context Compression Layer;
+5. mendukung retrieval hybrid melalui vector search, SQLite FTS5, dan mini graph;
+6. menyusun evidence pack pendek melalui context compression;
 7. mengirim evidence pack ke model lokal;
 8. memverifikasi jawaban terhadap evidence;
-9. menyimpan catatan kualitas jawaban untuk pengembangan lanjutan.
+9. menyimpan catatan kualitas jawaban untuk pengembangan lanjutan;
+10. menyediakan benchmark lokal agar perubahan model, prompt, dan verifier bisa diuji ulang.
 
-Proyek ini tidak dirancang untuk langsung bergantung pada model besar. Model kecil tetap dapat digunakan selama pipeline, verifier, dan quality layer mendukungnya.
+Proyek ini tidak diarahkan untuk langsung bergantung pada model besar. Model kecil dan model 4B dipakai secara bertahap, dengan penguatan pada retrieval, verifier, quality evaluator, dan regression benchmark.
 
 ---
 
-## 2. Arsitektur Ringkas
+## 2. Status Baseline v2.1
+
+Baseline v2.1 menetapkan `qwen3:4b-instruct` sebagai model general yang lolos evaluasi awal untuk answer generation berbasis evidence.
+
+Status terakhir:
+
+| Area | Status |
+|---|---|
+| Model mode `general` | Lulus |
+| Model aktif | `qwen3:4b-instruct` |
+| RAG model ringan | `qwen-rag-1.5b:latest` |
+| Coder model | `qwen-coder-1.5b:latest` |
+| Model availability validation | Lulus |
+| Model smoke benchmark | 4/5 lulus |
+| RAG regression benchmark | 4/4 lulus |
+| Safe abstention quality | Lulus |
+| Qwen judge | Tersedia sebagai opsi, masih default OFF |
+| Arithmetic reasoning | Belum aman tanpa tool deterministik |
+
+Catatan penting: model lokal kecil dan 4B tidak boleh dipercaya untuk kalkulasi numerik. Tes `17 * 23` masih gagal pada model 4B maupun 1.5B, sehingga perhitungan harus diarahkan ke tool deterministik seperti Python/calculator layer.
+
+---
+
+## 3. Arsitektur Ringkas
 
 ```text
 File masuk
@@ -42,13 +66,14 @@ File masuk
 → Evidence Pack
 → Local LLM via Ollama
 → Verifier
+→ Answer Quality Evaluator
 → Answer Quality Store
 → Saved Answer
 ```
 
 ---
 
-## 3. Komponen Utama
+## 4. Komponen Utama
 
 | Komponen | Fungsi |
 |---|---|
@@ -61,12 +86,16 @@ File masuk
 | Mini Graph | Memetakan relasi dokumen, chunk, parser, filetype, dan term |
 | Context Compressor | Mengubah retrieval mentah menjadi evidence pack pendek |
 | Ollama | Runtime model lokal |
-| Verifier | Mengecek apakah jawaban didukung evidence |
-| Quality Store | Menyimpan kualitas jawaban dan feedback |
+| Local Verifier | Mengecek apakah jawaban didukung evidence |
+| Qwen Judge | Verifier LLM opsional, default OFF |
+| Answer Evaluator | Mendeteksi artifact, role confusion, dan safe abstention |
+| Quality Store | Menyimpan kualitas jawaban, feedback, dan audit verifier |
+| Model Smoke Bench | Benchmark singkat untuk model aktif |
+| RAG Regression Bench | Benchmark regression untuk positive query, false premise, pipeline recall, dan out-of-scope guard |
 
 ---
 
-## 4. Struktur Folder
+## 5. Struktur Folder
 
 ```text
 ai-rag-local/
@@ -85,8 +114,11 @@ ai-rag-local/
 │   ├── answer_postprocess.py
 │   ├── hybrid_retrieval.py
 │   ├── ingest.py
+│   ├── model_smoke_bench.py
+│   ├── rag_regression_bench.py
 │   ├── quality_store.py
 │   ├── quality_report.py
+│   ├── show_model_mode.py
 │   └── validate_models.py
 ├── data/
 │   ├── inbox/
@@ -101,28 +133,31 @@ ai-rag-local/
 │   └── logs/
 ├── .env.sample
 ├── .gitignore
+├── DEVELOPMENT_PLAN.md
+├── SPECIFICATION.md
+├── UNFINISHED.md
 ├── Modelfile.rag
 └── requirements.txt
 ```
 
-`data/` berisi data kerja lokal dan sebaiknya tidak semua isinya dikomit ke GitHub, terutama database, cache, index, evidence, dan jawaban hasil eksperimen.
+`data/` berisi data kerja lokal. Jangan commit database, cache, index, evidence, jawaban hasil eksperimen, atau output benchmark kecuali memang sedang membuat fixture resmi.
 
 ---
 
-## 5. Kebutuhan Sistem
+## 6. Kebutuhan Sistem
 
-### Minimum yang disarankan
+Minimum yang disarankan:
 
-- OS: Windows 10/11
-- Python: 3.12 direkomendasikan
-- Java: 11+ untuk OpenDataLoader PDF
-- RAM: 16 GB minimum, 32 GB direkomendasikan
-- GPU: opsional; GTX 1650 4 GB cukup untuk eksperimen model kecil
-- Ollama: untuk menjalankan model lokal
+| Komponen | Rekomendasi |
+|---|---|
+| OS | Windows 10/11 |
+| Python | 3.12 direkomendasikan |
+| Java | 11+ untuk OpenDataLoader PDF |
+| RAM | 16 GB minimum, 32 GB direkomendasikan |
+| GPU | Opsional; GTX 1650 4 GB cukup untuk eksperimen model kecil |
+| Runtime model | Ollama lokal |
 
-### Catatan Python
-
-Gunakan virtual environment. Hindari instalasi global untuk dependency Python.
+Gunakan virtual environment. Hindari instalasi dependency Python secara global.
 
 ```powershell
 py -3.12 -m venv .venv
@@ -131,83 +166,85 @@ python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
----
-
-## 6. Setup Environment
-
-1. Clone repository:
+Untuk Git Bash:
 
 ```bash
-git clone https://github.com/Firzh/ai-rag-local.git
-cd ai-rag-local
-```
-
-2. Buat virtual environment:
-
-```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-3. Install dependency:
-
-```bash
+source .venv/Scripts/activate
+python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
-4. Salin `.env.sample` menjadi `.env`:
+---
+
+## 7. Setup Environment
+
+Salin `.env.sample` menjadi `.env`, lalu sesuaikan path dan model.
 
 ```bash
 cp .env.sample .env
 ```
 
-5. Sesuaikan path di `.env`, terutama:
+Baseline v2.1:
 
 ```env
-RAG_PROJECT_DIR=F:\AI-Models\ai-rag-local
-RAG_INBOX_DIR=F:\AI-Models\ai-rag-local\data\inbox
-RAG_CHROMA_DIR=F:\AI-Models\ai-rag-local\data\chroma
+RAG_LLM_PROVIDER=ollama
 RAG_OLLAMA_BASE_URL=http://127.0.0.1:11434
-RAG_MODEL_MODE=rag
+
+RAG_MODEL_MODE=general
 RAG_OLLAMA_MODEL_RAG=qwen-rag-1.5b:latest
 RAG_OLLAMA_MODEL_CODER=qwen-coder-1.5b:latest
-RAG_OLLAMA_MODEL_GENERAL=qwen-general:4b:latest
+RAG_OLLAMA_MODEL_GENERAL=qwen3:4b-instruct
+RAG_OLLAMA_MODEL=
+
+RAG_LLM_TEMPERATURE=0.1
+RAG_LLM_MAX_TOKENS=350
+RAG_ANSWER_MAX_CHARS=1200
+
+RAG_QWEN_JUDGE_ENABLED=false
+RAG_VERIFICATION_AUDIT_ENABLED=false
 ```
+
+`RAG_OLLAMA_MODEL` adalah override langsung. Biarkan kosong jika ingin memakai role-based model selection melalui `RAG_MODEL_MODE`.
 
 ---
 
-## 7. Setup Model Ollama
+## 8. Setup Model Ollama
 
-Model RAG dibuat sebagai turunan konfigurasi dari model coder yang sudah ada di Ollama. Ini bukan fine-tuning. `Modelfile.rag` hanya membuat custom tag dengan parameter, template, dan system prompt baru.
+Pastikan model tersedia di Ollama:
 
 ```bash
-ollama create qwen-rag-1.5b -f Modelfile.rag
 ollama list
 ```
 
-Validasi model:
+Model yang dipakai pada baseline v2.1:
+
+```text
+qwen3:4b-instruct
+qwen-rag-1.5b:latest
+qwen-coder-1.5b:latest
+```
+
+Validasi:
 
 ```bash
+python -m app.show_model_mode
 python -m app.validate_models
 ```
 
-Tes koneksi model:
-
-```bash
-python -c "from app.llm.clients import get_llm_client; c=get_llm_client(); r=c.generate('Jawab hanya: OK.', 'Tes.'); print(r.text)"
-```
-
-Target output:
+Target:
 
 ```text
-OK.
+Model mode: general
+Selected Ollama model: qwen3:4b-instruct
+selected | qwen3:4b-instruct | YES
+general  | qwen3:4b-instruct | YES
 ```
 
 ---
 
-## 8. Cara Menggunakan
+## 9. Cara Menggunakan
 
-### 8.1 Menambahkan dokumen
+### 9.1 Menambahkan dokumen
 
 Letakkan dokumen ke folder:
 
@@ -215,45 +252,51 @@ Letakkan dokumen ke folder:
 data/inbox/
 ```
 
-Format yang sudah didukung awal:
+Format awal yang didukung:
 
 - `.pdf`
 - `.txt`
 - `.md`
 - file teks/kode sederhana
 
-### 8.2 Index dokumen
+### 9.2 Ingest dokumen
 
 ```bash
 python -m app.ingest
 ```
 
-### 8.3 Bangun index tambahan
+### 9.3 Bangun index tambahan
 
 ```bash
 python -m app.rebuild_fts
 python -m app.build_graph
 ```
 
-### 8.4 Cek retrieval
+### 9.4 Cek retrieval
 
 ```bash
 python -m app.hybrid_query "apa isi dokumen ini?"
 ```
 
-### 8.5 Buat evidence pack
+### 9.5 Buat evidence pack
 
 ```bash
 python -m app.evidence_query "apa itu RAG lokal?"
 ```
 
-### 8.6 Tanya jawab penuh
+### 9.6 Tanya jawab penuh
 
 ```bash
 python -m app.answer_query "apa itu RAG lokal?"
 ```
 
-### 8.7 Cek kualitas jawaban
+### 9.7 Dry-run prompt dan evidence
+
+```bash
+python -m app.answer_query "apa itu RAG lokal?" --dry-run
+```
+
+### 9.8 Cek kualitas jawaban
 
 ```bash
 python -m app.quality_report
@@ -261,21 +304,19 @@ python -m app.quality_report
 
 ---
 
-## 9. Mode Model
+## 10. Mode Model
 
-Proyek mendukung mode model melalui `.env`:
+Mode model dikendalikan melalui `.env` atau environment variable shell.
 
 ```env
-RAG_MODEL_MODE=rag
+RAG_MODEL_MODE=general
 ```
-
-Mode yang dirancang:
 
 | Mode | Model | Fungsi |
 |---|---|---|
-| `rag` | `qwen-rag-1.5b:latest` | Menjawab evidence pack pendek |
+| `rag` | `qwen-rag-1.5b:latest` | Model ringan untuk eksperimen RAG pendek |
 | `coder` | `qwen-coder-1.5b:latest` | Bantuan coding/debugging |
-| `general` | `qwen-general:4b:latest` | Model general 4B, belum wajib aktif |
+| `general` | `qwen3:4b-instruct` | Model general 4B untuk answer generation utama baseline v2.1 |
 
 Cek mode aktif:
 
@@ -283,11 +324,18 @@ Cek mode aktif:
 python -m app.show_model_mode
 ```
 
+Switch sementara di Git Bash:
+
+```bash
+export RAG_MODEL_MODE=general
+python -m app.show_model_mode
+```
+
 ---
 
-## 10. Quality Layer
+## 11. Quality Layer
 
-Quality layer digunakan untuk mengatasi keterbatasan model kecil. Sistem menyimpan riwayat kualitas jawaban ke SQLite:
+Quality layer digunakan untuk mengatasi keterbatasan model lokal. Sistem menyimpan riwayat kualitas jawaban ke SQLite:
 
 ```text
 data/quality/answer_quality.sqlite3
@@ -299,10 +347,17 @@ Quality layer memeriksa:
 - apakah jawaban menyalin label prompt;
 - apakah ada role confusion;
 - apakah sumber dicantumkan;
+- apakah jawaban out-of-scope melakukan safe abstention;
 - apakah fallback/refiner digunakan;
 - apakah jawaban layak dijadikan contoh baik.
 
-Feedback manual dapat ditambahkan:
+Safe abstention adalah jawaban yang menolak mengarang ketika dokumen tidak menyediakan informasi. Contoh yang benar:
+
+```text
+Tidak ada informasi tentang presiden Indonesia saat ini dalam dokumen proyek ini.
+```
+
+Feedback manual:
 
 ```bash
 python -m app.add_quality_feedback 3 good --note "Jawaban sudah benar."
@@ -310,7 +365,41 @@ python -m app.add_quality_feedback 3 good --note "Jawaban sudah benar."
 
 ---
 
-## 11. Status Saat Ini
+## 12. Benchmark Lokal
+
+### 12.1 Model smoke benchmark
+
+Benchmark ini menguji kepatuhan instruksi, arithmetic weakness, grounding Magika/Chroma, acronym safety, dan artifact labels.
+
+```bash
+python -m app.model_smoke_bench
+```
+
+Baseline v2.1 dengan `qwen3:4b-instruct`:
+
+```text
+SUMMARY: 4/5 passed
+```
+
+Satu kegagalan yang diketahui adalah arithmetic. Ini bukan blocker untuk RAG, tetapi menjadi batasan penting.
+
+### 12.2 RAG regression benchmark
+
+Benchmark ini menguji positive evidence, false premise, pipeline recall, dan out-of-scope guard.
+
+```bash
+python -m app.rag_regression_bench
+```
+
+Baseline v2.1:
+
+```text
+SUMMARY: 4/4 passed
+```
+
+---
+
+## 13. Status Saat Ini
 
 Sudah berjalan:
 
@@ -322,25 +411,30 @@ Sudah berjalan:
 - hybrid retrieval;
 - context compression;
 - evidence pack;
-- Ollama RAG answer model;
-- verifier;
+- Ollama answer model;
+- local verifier;
 - answer quality store;
+- verification audit store;
+- safe abstention evaluator;
+- model smoke benchmark;
+- RAG regression benchmark;
 - quality report.
 
 Belum final:
 
+- Qwen judge integration test aktif;
 - quality good answers collection;
 - LLM-based answer refiner;
-- model general 4B;
 - parser DOCX/XLSX/PPTX;
-- automated test suite;
-- packaging CLI yang lebih rapi.
+- CLI terpadu;
+- local API/UI;
+- numeric/tool-use layer untuk kalkulasi.
 
-Lihat file `DEVELOPMENT_PLAN.md` dan `UNFINISHED.md` untuk pengembangan berikutnya.
+Lihat `DEVELOPMENT_PLAN.md` dan `UNFINISHED.md` untuk pengembangan berikutnya.
 
 ---
 
-## 12. Troubleshooting
+## 14. Troubleshooting
 
 ### Model tidak ditemukan
 
@@ -357,15 +451,42 @@ python -m app.validate_models
 
 Pastikan nama model di `.env` sama persis dengan nama di `ollama list`.
 
-### Jawaban model melantur
+### `.env` sudah benar tetapi config masih lama
 
-Cek template Ollama dan jalankan:
+Cek environment aktif:
 
 ```bash
-python -c "from app.llm.clients import get_llm_client; c=get_llm_client(); r=c.generate('Jawab hanya: OK.', 'Tes.'); print(r.text)"
+python -c "import os; print(os.getenv('RAG_MODEL_MODE')); print(os.getenv('RAG_OLLAMA_MODEL_GENERAL')); print(os.getenv('RAG_OLLAMA_MODEL'))"
 ```
 
-Jika tidak menjawab `OK`, perbaiki `Modelfile.rag`, lalu jalankan ulang `ollama create`.
+Jika shell masih menyimpan nilai lama, bersihkan:
+
+```bash
+unset RAG_MODEL_MODE
+unset RAG_OLLAMA_MODEL_GENERAL
+unset RAG_OLLAMA_MODEL
+```
+
+Lalu jalankan ulang:
+
+```bash
+python -c "from app.config import settings; print(settings.model_mode, settings.ollama_model)"
+```
+
+### Jawaban model melantur
+
+Jalankan:
+
+```bash
+python -m app.model_smoke_bench
+python -m app.rag_regression_bench
+```
+
+Jika regression gagal, cek evidence pack:
+
+```bash
+python -m app.answer_query "query Anda" --dry-run
+```
 
 ### Retrieval mengambil dokumen tidak relevan
 
@@ -373,10 +494,9 @@ Jalankan:
 
 ```bash
 python -m app.hybrid_query "query Anda"
-python -m app.eval_rag
 ```
 
-Sesuaikan nilai:
+Parameter yang bisa disesuaikan:
 
 ```env
 RAG_SCORE_CUTOFF=0.30
@@ -386,6 +506,6 @@ RAG_RERANK_TOP_K=5
 
 ---
 
-## 13. Lisensi
+## 15. Lisensi
 
 Belum ditentukan. Tambahkan file `LICENSE` sebelum repository dipublikasikan lebih luas.

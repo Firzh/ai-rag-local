@@ -1,12 +1,12 @@
 # Rencana Pengembangan Lanjutan AI RAG Local
 
-Dokumen ini menjelaskan arah pengembangan lanjutan proyek setelah pipeline RAG lokal dasar berhasil berjalan.
+Dokumen ini menjelaskan arah pengembangan lanjutan proyek setelah baseline lokal v2.1 berhasil berjalan. Fokus pengembangan tetap sama: membuat RAG lokal yang ringan, dapat diaudit, dan stabil pada perangkat pribadi, tanpa langsung bergantung pada model besar.
 
 ---
 
 ## 1. Prinsip Pengembangan
 
-Pengembangan tidak diarahkan langsung ke model besar. Prioritasnya adalah memperkuat sistem pendukung agar model kecil maupun model 4B dapat menjawab lebih stabil.
+Pengembangan tidak diarahkan langsung ke model besar. Prioritasnya adalah memperkuat sistem pendukung agar model kecil maupun model 4B dapat menjawab lebih grounded.
 
 Prinsip utama:
 
@@ -15,25 +15,57 @@ retrieval lebih bersih
 context lebih pendek
 jawaban lebih grounded
 quality lebih terukur
+abstention lebih aman
 feedback lebih berguna
+benchmark bisa diulang
 model mode lebih fleksibel
+```
+
+Setiap perubahan besar harus bisa diuji dengan minimal:
+
+```bash
+python -m app.validate_models
+python -m app.model_smoke_bench
+python -m app.rag_regression_bench
+python -m app.quality_report
 ```
 
 ---
 
-## 2. Roadmap Prioritas
+## 2. Baseline v2.1
 
-## Tahap 1 — Stabilization
+Baseline v2.1 menetapkan bahwa `qwen3:4b-instruct` sudah layak digunakan sebagai model `general` untuk answer generation berbasis evidence, dengan catatan tidak digunakan untuk kalkulasi numerik tanpa tool deterministik.
 
-Status: sedang berjalan.
+Status baseline:
 
-Target:
+| Area | Status |
+|---|---|
+| Model mode `general` | Lulus |
+| Model aktif | `qwen3:4b-instruct` |
+| Availability test | Lulus |
+| Model smoke benchmark | 4/5 lulus |
+| RAG regression benchmark | 4/4 lulus |
+| Safe abstention evaluator | Lulus |
+| Verification audit store | Lulus |
+| Qwen judge aktif | Belum diuji, default OFF |
+| Arithmetic reasoning | Belum aman tanpa tool |
 
-- memastikan model RAG 1.5B stabil;
-- memperbaiki answer quality evaluator;
-- mengurangi role confusion;
-- membuat feedback manual mudah dipakai;
-- memastikan jawaban dasar lolos quality check.
+Implikasi keputusan:
+
+```env
+RAG_MODEL_MODE=general
+RAG_OLLAMA_MODEL_GENERAL=qwen3:4b-instruct
+RAG_QWEN_JUDGE_ENABLED=false
+RAG_VERIFICATION_AUDIT_ENABLED=false
+```
+
+---
+
+## 3. Roadmap Prioritas
+
+### Tahap 1 — Stabilization
+
+Status: selesai untuk baseline lokal awal.
 
 Checklist:
 
@@ -47,16 +79,74 @@ Checklist:
 - [x] Hybrid retrieval
 - [x] Context compressor
 - [x] Evidence pack
-- [x] Ollama RAG model
-- [x] Verifier
+- [x] Ollama answer model
+- [x] Local verifier
 - [x] Quality Store
-- [ ] Role-aware deterministic refiner final
-- [ ] Auto-feedback final
+- [x] Verification audit store
+- [x] Safe abstention evaluator
+- [x] Model smoke benchmark
+- [x] RAG regression benchmark
 - [ ] Quality report dengan issue trend
+- [ ] Refiner final
 
 ---
 
-## Tahap 2 — Quality Memory
+### Tahap 2 — Model General 4B Baseline
+
+Status: selesai sebagai baseline awal.
+
+Hasil:
+
+- `qwen3:4b-instruct` tersedia di Ollama;
+- mode `general` berhasil memilih model tersebut;
+- model lulus instruction test, grounding Magika/Chroma, acronym safety, dan anti-artifact label;
+- model gagal arithmetic test sehingga numeric reasoning harus diarahkan ke tool deterministik;
+- RAG regression test lulus 4/4 pada query positive evidence, false premise, pipeline order, dan out-of-scope guard.
+
+Catatan:
+
+- `qwen-rag-1.5b:latest` tetap dipertahankan sebagai mode ringan dan pembanding;
+- `qwen3:4b-instruct` dipakai sebagai model general utama pada baseline v2.1;
+- jangan menghapus mode `rag` karena tetap berguna untuk pembandingan latency dan regression.
+
+---
+
+### Tahap 3 — Qwen Judge Integration Test
+
+Status: berikutnya.
+
+Tujuan: menguji verifier LLM opsional tanpa mengganggu local verifier.
+
+Langkah aman:
+
+1. pastikan baseline lokal lulus dengan Qwen judge OFF;
+2. aktifkan audit terlebih dahulu;
+3. aktifkan Qwen judge pada query kecil;
+4. bandingkan verdict local verifier vs Qwen judge;
+5. pastikan jika Qwen judge gagal, pipeline fallback ke local verifier;
+6. jangan jadikan Qwen judge wajib sebelum stabil.
+
+Command awal:
+
+```bash
+export RAG_MODEL_MODE=general
+export RAG_VERIFICATION_AUDIT_ENABLED=true
+export RAG_QWEN_JUDGE_ENABLED=true
+python -m app.answer_query "Apakah Chroma adalah parser PDF?"
+```
+
+Kriteria lulus:
+
+- local verifier tetap berjalan;
+- Qwen judge tercatat di `answer_verification_runs`;
+- jika Qwen judge tidak tersedia, pipeline tidak crash;
+- quality report tetap bisa dibaca.
+
+---
+
+### Tahap 4 — Quality Memory
+
+Status: belum selesai.
 
 Tujuan: membuat sistem belajar dari jawaban bagus dan buruk tanpa fine-tuning.
 
@@ -82,12 +172,17 @@ supported=True
 quality_pass=True
 issue_tags=[]
 artifact_like=False
+abstention_like=False
 feedback_label=good
 ```
 
+Catatan: abstention yang aman boleh lulus quality, tetapi tidak otomatis menjadi contoh good answer untuk semua query karena fungsi utamanya adalah guardrail, bukan style factual answer.
+
 ---
 
-## Tahap 3 — Quality Good Answer Retrieval
+### Tahap 5 — Quality Good Answer Retrieval
+
+Status: belum selesai.
 
 Tujuan: memberi contoh jawaban bagus ke prompt agar model kecil meniru format yang benar.
 
@@ -102,17 +197,19 @@ User query
 → verifier + quality evaluator
 ```
 
-Catatan:
+Aturan:
 
-- Jangan campur quality_good_answers dengan collection dokumen utama.
+- Jangan campur `quality_good_answers` dengan collection dokumen utama.
 - Quality collection hanya untuk style dan pattern jawaban, bukan sumber fakta.
-- Jawaban final tetap harus mengutip evidence dari dokumen sumber.
+- Jawaban final tetap wajib mengutip evidence dari dokumen sumber.
 
 ---
 
-## Tahap 4 — LLM Refiner Opsional
+### Tahap 6 — Refiner
 
-Tujuan: memperbaiki jawaban yang quality-nya rendah.
+Status: belum selesai.
+
+Tujuan: memperbaiki jawaban yang quality-nya rendah tanpa menambah fakta baru.
 
 Alur:
 
@@ -120,7 +217,7 @@ Alur:
 answer awal
 → issue tags
 → evidence pack
-→ LLM refiner
+→ deterministic refiner / LLM refiner
 → refined answer
 → verifier
 → quality evaluator
@@ -131,9 +228,10 @@ Refiner harus dibatasi:
 - tidak boleh menambah fakta baru;
 - hanya boleh menulis ulang berdasarkan evidence;
 - wajib menghapus issue tags;
-- wajib menyertakan sumber.
+- wajib menyertakan sumber;
+- harus bisa menolak bila evidence tidak cukup.
 
-Default yang disarankan:
+Prioritas:
 
 ```text
 deterministic refiner dahulu
@@ -142,31 +240,9 @@ LLM refiner hanya opsional
 
 ---
 
-## Tahap 5 — Model General 4B
+### Tahap 7 — Parser Expansion
 
-Tujuan: menambahkan model general yang lebih natural tanpa merusak mode RAG 1.5B.
-
-Langkah:
-
-1. install/import Qwen 4B ke Ollama;
-2. buat model tag `qwen-general:4b:latest`;
-3. validasi dengan `python -m app.validate_models`;
-4. tes instruksi pendek `OK`;
-5. tes aritmetika pendek;
-6. tes `answer_query` dasar;
-7. bandingkan output RAG 1.5B vs general 4B.
-
-Jangan langsung mengganti default:
-
-```env
-RAG_MODEL_MODE=rag
-```
-
-tetap dipakai sampai 4B lolos evaluasi.
-
----
-
-## Tahap 6 — Parser Expansion
+Status: belum selesai.
 
 Tambahkan parser baru:
 
@@ -184,11 +260,14 @@ Prinsip:
 
 - parser menyimpan hasil ke `data/parsed`;
 - output parser harus punya metadata;
-- jangan langsung kirim dokumen mentah ke LLM.
+- jangan langsung kirim dokumen mentah ke LLM;
+- parser baru harus masuk regression test minimal dengan satu fixture kecil.
 
 ---
 
-## Tahap 7 — Better Chunking
+### Tahap 8 — Better Chunking
+
+Status: belum selesai.
 
 Chunking saat ini masih berbasis karakter. Pengembangan berikutnya:
 
@@ -216,9 +295,18 @@ Metadata chunk minimal:
 
 ---
 
-## Tahap 8 — Evaluation Suite
+### Tahap 9 — Evaluation Suite
 
-Tambahkan test suite lokal:
+Status: sebagian selesai.
+
+Sudah ada:
+
+```text
+app/model_smoke_bench.py
+app/rag_regression_bench.py
+```
+
+Perlu ditambah ke test formal:
 
 ```text
 tests/
@@ -228,7 +316,8 @@ tests/
 ├── test_retrieval.py
 ├── test_evidence.py
 ├── test_answer_quality.py
-└── test_model_client.py
+├── test_model_client.py
+└── test_rag_regression.py
 ```
 
 Target evaluasi:
@@ -236,6 +325,8 @@ Target evaluasi:
 - retrieval precision;
 - answer groundedness;
 - role correctness;
+- false-premise correction;
+- out-of-scope abstention;
 - latency;
 - memory usage;
 - context size;
@@ -244,7 +335,9 @@ Target evaluasi:
 
 ---
 
-## Tahap 9 — CLI/Orchestrator
+### Tahap 10 — CLI/Orchestrator
+
+Status: belum selesai.
 
 Saat ini command masih tersebar. Buat CLI tunggal:
 
@@ -254,6 +347,8 @@ python -m app.main ask "query"
 python -m app.main evidence "query"
 python -m app.main quality report
 python -m app.main model validate
+python -m app.main bench model
+python -m app.main bench rag
 ```
 
 Atau pakai Typer:
@@ -262,11 +357,15 @@ Atau pakai Typer:
 raglocal ingest
 raglocal ask "query"
 raglocal quality-report
+raglocal bench-model
+raglocal bench-rag
 ```
 
 ---
 
-## Tahap 10 — Local API / UI
+### Tahap 11 — Local API / UI
+
+Status: belum dimulai.
 
 Setelah CLI stabil:
 
@@ -280,7 +379,7 @@ Setelah CLI stabil:
 
 ---
 
-## 3. Rencana Quality Learning
+## 4. Rencana Quality Learning
 
 Quality learning bukan fine-tuning. Sistem belajar melalui:
 
@@ -290,7 +389,8 @@ Quality learning bukan fine-tuning. Sistem belajar melalui:
 4. feedback label;
 5. good answer retrieval;
 6. prompt examples;
-7. evaluator refinement.
+7. evaluator refinement;
+8. regression benchmark.
 
 Alur masa depan:
 
@@ -305,53 +405,70 @@ Jawaban buruk
 
 ---
 
-## 4. Rencana Fine-tuning
+## 5. Rencana Fine-tuning
 
-Belum prioritas. Fine-tuning hanya dipertimbangkan jika:
+Fine-tuning belum prioritas.
+
+Fine-tuning hanya dipertimbangkan jika:
 
 - minimal ada 500–1000 pasangan query/evidence/good answer;
 - format data konsisten;
 - quality pass tinggi;
-- hardware dan runtime mendukung.
+- hardware dan runtime mendukung;
+- baseline RAG + quality memory sudah tidak cukup.
 
 Sebelum itu, gunakan:
 
 ```text
-RAG + quality memory + few-shot examples
+RAG + quality memory + few-shot examples + regression benchmark
 ```
 
 ---
 
-## 5. Target Milestone
+## 6. Target Milestone
 
 ### Milestone A — Stable Local RAG
 
-- model RAG 1.5B stabil;
+Status: selesai.
+
+- model lokal tersedia;
 - jawaban dasar supported;
 - quality report bersih;
-- feedback dapat disimpan.
+- feedback dapat disimpan;
+- safe abstention bekerja.
 
-### Milestone B — Adaptive Quality Memory
+### Milestone B — General Model Baseline
 
-- good answer collection aktif;
-- prompt dapat mengambil contoh jawaban bagus;
-- model kecil lebih konsisten.
-
-### Milestone C — General Model Comparison
+Status: selesai untuk baseline awal.
 
 - Qwen 4B aktif;
 - mode switch stabil;
-- benchmark RAG 1.5B vs 4B.
+- benchmark RAG 1.5B vs 4B tersedia;
+- regression benchmark lulus.
+
+### Milestone C — Qwen Judge and Quality Memory
+
+Status: berikutnya.
+
+- Qwen judge aktif secara opsional;
+- audit verifier stabil;
+- good answer collection aktif;
+- prompt dapat mengambil contoh jawaban bagus.
 
 ### Milestone D — Document Expansion
 
+Status: belum selesai.
+
 - DOCX, XLSX, PPTX, HTML parser;
-- semantic chunking;
+- semantic/heading-aware chunking;
 - metadata lebih kaya.
 
 ### Milestone E — Local Productization
 
+Status: belum dimulai.
+
 - CLI tunggal;
 - local API;
 - UI sederhana;
-- dokumentasi final.
+- dokumentasi final;
+- packaging lokal.

@@ -1,15 +1,15 @@
 # Hal yang Belum Selesai dan Catatan Pengembangan Terakhir
 
-Dokumen ini merangkum bagian yang belum selesai dari pengembangan terakhir AI RAG Local.
+Dokumen ini merangkum bagian yang belum selesai dari pengembangan AI RAG Local setelah baseline v2.1.
 
 ---
 
 ## 1. Status Terakhir yang Sudah Berhasil
 
-Berikut bagian yang sudah berhasil berjalan:
+Bagian yang sudah berhasil berjalan:
 
 - environment Python aktif;
-- folder kerja dan `.env` sudah terbaca;
+- folder kerja dan `.env` terbaca;
 - Magika file router berjalan;
 - OpenDataLoader PDF parser berjalan;
 - text parser berjalan;
@@ -19,33 +19,77 @@ Berikut bagian yang sudah berhasil berjalan:
 - Mini Graph dibangun;
 - Hybrid Retrieval berjalan;
 - Context Compressor membuat evidence pack;
-- Ollama RAG model berhasil menjawab;
-- Verifier berjalan;
+- Ollama answer model berjalan;
+- mode `general` memakai `qwen3:4b-instruct`;
+- model validation lulus;
+- Local Verifier berjalan;
 - Answer Quality DB aktif;
-- Quality report berjalan.
+- Verification Audit DB berjalan;
+- Quality report berjalan;
+- safe abstention evaluator berjalan;
+- model smoke benchmark tersedia;
+- RAG regression benchmark tersedia;
+- RAG regression benchmark baseline v2.1 lulus 4/4.
 
 ---
 
 ## 2. Masalah yang Masih Terlihat
 
-### 2.1 Quality evaluator masih bisa false pass
+### 2.1 Arithmetic reasoning belum aman
 
-Beberapa jawaban masih lolos quality score meskipun secara makna ada role leakage. Contoh:
+Model lokal kecil dan model 4B masih gagal pada tes aritmetika sederhana. Contoh `17 * 23` tidak dijawab benar.
 
-- Magika disebut terlalu melebar ke seluruh pipeline;
-- Chroma disebut terkait parser/filetype/term penting;
-- verifier keyword-based masih bisa menganggap jawaban supported karena banyak kata cocok.
+Risiko:
+
+- jawaban numerik salah tetapi terlihat meyakinkan;
+- kalkulasi keuangan, statistik, atau teknis menjadi tidak dapat dipercaya bila langsung memakai LLM.
 
 Diperlukan:
 
-- role-aware evaluator yang lebih kuat;
-- issue tag yang lebih spesifik;
-- refiner otomatis;
-- feedback manual yang lebih terstruktur.
+- calculator/Python tool layer;
+- numeric intent detector;
+- aturan bahwa query hitungan tidak boleh dijawab murni oleh LLM;
+- regression test khusus numerik.
 
 ---
 
-### 2.2 `component_roles.json` belum matang
+### 2.2 Qwen judge belum menjadi baseline aktif
+
+Qwen judge sudah tersedia sebagai opsi, tetapi masih default OFF.
+
+Belum selesai:
+
+- test Qwen judge dengan endpoint aktif;
+- cek behavior ketika judge timeout;
+- cek strict hybrid verdict;
+- simpan audit verdict secara konsisten;
+- bandingkan false positive/false negative local verifier vs Qwen judge.
+
+Prinsip:
+
+```text
+local verifier tetap baseline
+qwen judge opsional
+qwen judge tidak boleh membuat pipeline crash
+```
+
+---
+
+### 2.3 Quality evaluator masih perlu diperkuat
+
+Safe abstention sudah ditangani, tetapi evaluator masih perlu diperluas untuk kasus lain.
+
+Belum selesai:
+
+- issue tag lebih spesifik untuk semantic drift;
+- issue tag untuk acronym hijack;
+- issue tag untuk numeric hallucination;
+- score calibration berdasarkan tipe jawaban;
+- tren issue di `quality_report`.
+
+---
+
+### 2.4 `component_roles.json` belum matang
 
 File ini harus berkembang dari waktu ke waktu. Namun update harus dikontrol.
 
@@ -71,7 +115,7 @@ Jangan langsung auto-update rule tanpa kontrol.
 
 ---
 
-### 2.3 Feedback manusia masih minimal
+### 2.5 Feedback manusia masih minimal
 
 Masalah:
 
@@ -88,7 +132,7 @@ Belum selesai:
 
 ---
 
-### 2.4 Auto Refiner belum final
+### 2.6 Auto Refiner belum final
 
 Kebutuhan:
 
@@ -107,11 +151,12 @@ Belum selesai:
 - LLM refiner opsional;
 - refiner untuk query umum;
 - refiner untuk role-specific answer;
-- fallback jika refiner gagal.
+- fallback jika refiner gagal;
+- guard agar refiner tidak menambah fakta baru.
 
 ---
 
-### 2.5 Quality good answers collection belum dibuat
+### 2.7 Quality good answers collection belum dibuat
 
 Belum ada collection khusus:
 
@@ -131,35 +176,14 @@ Kriteria data masuk:
 supported=True
 quality_pass=True
 artifact_like=False
+abstention_like=False
 issue_tags=[]
 feedback_label=good
 ```
 
 ---
 
-### 2.6 Model general 4B belum tersedia
-
-Validator menunjukkan mode general belum siap jika model belum ada di Ollama.
-
-Belum selesai:
-
-- import Qwen 4B;
-- Modelfile general;
-- model validation;
-- OK test;
-- arithmetic test;
-- answer_query test;
-- benchmark terhadap RAG 1.5B.
-
-Default tetap:
-
-```env
-RAG_MODEL_MODE=rag
-```
-
----
-
-### 2.7 Parser dokumen belum lengkap
+### 2.8 Parser dokumen belum lengkap
 
 Saat ini fokus masih PDF dan teks.
 
@@ -175,7 +199,7 @@ Belum selesai:
 
 ---
 
-### 2.8 Chunking masih sederhana
+### 2.9 Chunking masih sederhana
 
 Chunking masih berbasis karakter.
 
@@ -190,30 +214,36 @@ Belum selesai:
 
 ---
 
-### 2.9 Verifier masih keyword-based
+### 2.10 Verifier masih keyword-based
 
 Verifier belum benar-benar memahami entailment.
 
 Risiko:
 
 - jawaban salah tetapi banyak kata cocok bisa dianggap supported;
-- jawaban benar tetapi paraphrase bisa mendapat score rendah.
+- jawaban benar tetapi paraphrase bisa mendapat score rendah;
+- abstention dapat terlihat unsupported walaupun aman.
 
 Belum selesai:
 
 - claim extraction;
 - evidence alignment per claim;
 - contradiction detection;
-- optional LLM judge;
+- optional LLM judge active test;
 - numeric consistency check.
 
 ---
 
-### 2.10 Belum ada test suite
+### 2.11 Test suite formal belum ada
 
-Belum ada automated test formal.
+Sudah ada benchmark script:
 
-Perlu dibuat:
+```text
+app/model_smoke_bench.py
+app/rag_regression_bench.py
+```
+
+Belum selesai:
 
 ```text
 tests/test_router.py
@@ -224,11 +254,12 @@ tests/test_compressor.py
 tests/test_verifier.py
 tests/test_quality.py
 tests/test_model_client.py
+tests/test_rag_regression.py
 ```
 
 ---
 
-### 2.11 Belum ada CLI terpadu
+### 2.12 Belum ada CLI terpadu
 
 Saat ini command masih tersebar.
 
@@ -237,8 +268,11 @@ Belum selesai:
 ```bash
 raglocal ingest
 raglocal ask "query"
+raglocal evidence "query"
 raglocal quality-report
 raglocal model-validate
+raglocal bench-model
+raglocal bench-rag
 ```
 
 ---
@@ -256,6 +290,7 @@ Cek ulang:
 - `answer_quality.py`
 - `answer_evaluator.py`
 - `component_roles.json`
+- `rag_regression_bench.py`
 
 ### 3.3 Role leakage pada Magika dan Chroma
 
@@ -276,33 +311,57 @@ Magika berfungsi sebagai file router
 Chroma berfungsi sebagai vector database
 ```
 
+### 3.4 Acronym drift pada RAG
+
+Pastikan model tidak menafsirkan RAG sebagai istilah lain seperti:
+
+```text
+Relational Algebra for Graphs
+Relevance, Accuracy, and Grit
+```
+
+RAG dalam proyek ini harus berarti:
+
+```text
+Retrieval-Augmented Generation berbasis dokumen lokal
+```
+
 ---
 
 ## 4. Prioritas Berikutnya
 
 Urutan paling aman:
 
-1. finalisasi `component_roles.json`;
-2. finalisasi `answer_evaluator.py`;
-3. tambahkan `answer_refiner.py`;
-4. tambahkan `auto_feedback.py`;
-5. simpan corrected answer;
-6. buat quality_good_answers collection;
-7. baru pasang Qwen 4B general.
+1. rapikan dokumentasi baseline v2.1;
+2. commit `answer_evaluator.py`, `model_smoke_bench.py`, dan `rag_regression_bench.py`;
+3. bersihkan output benchmark/evidence/answer yang tidak perlu dikomit;
+4. jalankan Qwen judge integration test;
+5. finalisasi audit verifier behavior;
+6. perluas issue tags untuk semantic drift dan numeric hallucination;
+7. buat quality_good_answers collection;
+8. desain deterministic refiner;
+9. mulai parser DOCX/XLSX/PPTX setelah regression baseline stabil.
 
 ---
 
 ## 5. Definisi Selesai untuk Tahap Berikutnya
 
-Pengembangan tahap berikutnya dianggap selesai jika:
+Tahap Qwen judge dianggap selesai jika:
 
-- query fungsi Magika menghasilkan role yang tepat;
-- query fungsi Chroma menghasilkan role yang tepat;
-- quality report menunjukkan `Artifact=False`;
-- issue tags kosong untuk jawaban yang benar;
-- feedback bisa menyimpan label dan corrected answer;
-- bad answer bisa menghasilkan proposal perbaikan;
-- jawaban bagus bisa disimpan sebagai contoh.
+- Qwen judge bisa diaktifkan melalui `.env`;
+- local verifier tetap berjalan;
+- verdict Qwen judge tersimpan di `answer_verification_runs`;
+- jika Qwen judge gagal, pipeline fallback ke local verifier;
+- `rag_regression_bench` tetap lulus;
+- quality report tetap bersih.
+
+Tahap quality memory dianggap selesai jika:
+
+- feedback bisa menyimpan label, note, dan corrected answer;
+- jawaban bagus bisa dipromosikan ke `quality_good_answers`;
+- prompt bisa mengambil contoh jawaban bagus;
+- contoh jawaban tidak dijadikan sumber fakta;
+- regression benchmark tidak menurun.
 
 ---
 
@@ -314,4 +373,7 @@ Menambah model kecil memang membutuhkan banyak komponen pendukung. Namun ini buk
 - lebih dapat diaudit;
 - tidak terlalu bergantung pada model besar;
 - bisa diperbaiki bertahap melalui quality memory;
-- siap dibandingkan dengan model 4B tanpa membuang fondasi yang sudah dibuat.
+- siap dibandingkan dengan model 4B;
+- dapat diuji ulang melalui benchmark lokal.
+
+Baseline v2.1 harus diperlakukan sebagai titik stabil sebelum menambah fitur baru. Perubahan berikutnya sebaiknya kecil, terukur, dan selalu diuji dengan `model_smoke_bench` serta `rag_regression_bench`.
