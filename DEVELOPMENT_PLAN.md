@@ -1,546 +1,132 @@
-# Rencana Pengembangan Lanjutan AI RAG Local
+# Development Plan
 
-Dokumen ini menjelaskan arah pengembangan lanjutan proyek setelah baseline lokal v2.1 berhasil berjalan. Fokus pengembangan tetap sama: membuat RAG lokal yang ringan, dapat diaudit, dan stabil pada perangkat pribadi, tanpa langsung bergantung pada model besar.
+## Development Principle
 
----
+Every feature must be measurable. A change is considered stable only when it has a repeatable command and a clear pass/fail result.
 
-## 1. Prinsip Pengembangan
+## Completed Milestones
 
-Pengembangan tidak diarahkan langsung ke model besar. Prioritasnya adalah memperkuat sistem pendukung agar model kecil maupun model 4B dapat menjawab lebih grounded.
+### v2.1.1 — Local RAG Benchmark and Hybrid Qwen Judge Baseline
 
-Prinsip utama:
+Completed:
 
-```text
-retrieval lebih bersih
-context lebih pendek
-jawaban lebih grounded
-quality lebih terukur
-abstention lebih aman
-feedback lebih berguna
-benchmark bisa diulang
-model mode lebih fleksibel
-```
+- `qwen3:4b-instruct` validated as the local `general` model.
+- Positive evidence query passed.
+- False-premise correction passed.
+- Out-of-scope abstention passed.
+- Quality evaluator supports safe abstention.
+- Hybrid Qwen judge integration tested through local Ollama OpenAI-compatible `/v1`.
+- Verifier audit records local and semantic verifier runs.
 
-Setiap perubahan besar harus bisa diuji dengan minimal:
+### v2.2 — Deterministic Calculator and Gemini API Foundation
 
-```bash
-python -m app.validate_models
-python -m app.model_smoke_bench
-python -m app.rag_regression_bench
-python -m app.quality_report
-```
+Final v2.2 scope:
 
----
+1. Add deterministic calculator tool.
+2. Route arithmetic-like queries before normal RAG retrieval.
+3. Extend RAG regression with arithmetic cases.
+4. Keep external API experimentation generic through `openai_compatible`.
+5. Document Gemini API as the next API candidate.
+6. Keep NVIDIA NIM as future endpoint/fine-tuning candidate.
 
-## 2. Baseline v2.1
-
-Baseline v2.1 menetapkan bahwa `qwen3:4b-instruct` sudah layak digunakan sebagai model `general` untuk answer generation berbasis evidence, dengan catatan tidak digunakan untuk kalkulasi numerik tanpa tool deterministik.
-
-Status baseline:
-
-| Area | Status |
-|---|---|
-| Model mode `general` | Lulus |
-| Model aktif | `qwen3:4b-instruct` |
-| Availability test | Lulus |
-| Model smoke benchmark | 4/5 lulus |
-| RAG regression benchmark | 4/4 lulus |
-| Safe abstention evaluator | Lulus |
-| Verification audit store | Lulus |
-| Qwen judge aktif | Integration test lulus sebagai verifier opsional via Ollama `/v1`; default OFF untuk baseline lokal |
-| Arithmetic reasoning | Belum aman tanpa tool |
-
-Implikasi keputusan:
-
-```env
-RAG_MODEL_MODE=general
-RAG_OLLAMA_MODEL_GENERAL=qwen3:4b-instruct
-RAG_QWEN_JUDGE_ENABLED=false
-RAG_VERIFICATION_AUDIT_ENABLED=false
-
-# Untuk integration test judge:
-# RAG_QWEN_JUDGE_ENABLED=true
-# RAG_VERIFICATION_AUDIT_ENABLED=true
-# RAG_QWEN_JUDGE_BASE_URL=http://127.0.0.1:11434/v1
-# RAG_QWEN_JUDGE_MODEL=qwen3:4b-instruct
-# RAG_QWEN_JUDGE_API_KEY=ollama
-```
-
----
-
-## 3. Roadmap Prioritas
-
-### Tahap 1 — Stabilization
-
-Status: selesai untuk baseline lokal awal.
-
-Checklist:
-
-- [x] File router dengan Magika
-- [x] PDF parser dengan OpenDataLoader PDF
-- [x] Text parser
-- [x] FastEmbed
-- [x] Chroma
-- [x] SQLite FTS5
-- [x] Mini Graph
-- [x] Hybrid retrieval
-- [x] Context compressor
-- [x] Evidence pack
-- [x] Ollama answer model
-- [x] Local verifier
-- [x] Quality Store
-- [x] Verification audit store
-- [x] Safe abstention evaluator
-- [x] Model smoke benchmark
-- [x] RAG regression benchmark
-- [ ] Quality report dengan issue trend
-- [ ] Refiner final
-
----
-
-### Tahap 2 — Model General 4B Baseline
-
-Status: selesai sebagai baseline awal.
-
-Hasil:
-
-- `qwen3:4b-instruct` tersedia di Ollama;
-- mode `general` berhasil memilih model tersebut;
-- model lulus instruction test, grounding Magika/Chroma, acronym safety, dan anti-artifact label;
-- model gagal arithmetic test sehingga numeric reasoning harus diarahkan ke tool deterministik;
-- RAG regression test lulus 4/4 pada query positive evidence, false premise, pipeline order, dan out-of-scope guard.
-
-Catatan:
-
-- `qwen-rag-1.5b:latest` tetap dipertahankan sebagai mode ringan dan pembanding;
-- `qwen3:4b-instruct` dipakai sebagai model general utama pada baseline v2.1;
-- jangan menghapus mode `rag` karena tetap berguna untuk pembandingan latency dan regression.
-
----
-
-### Tahap 3 — Qwen Judge Integration Test
-
-Status: selesai sebagai integration baseline opsional.
-
-Tujuan tahap ini adalah menguji verifier LLM opsional tanpa mengganti local verifier. Test sudah dilakukan menggunakan `qwen3:4b-instruct` melalui endpoint Ollama OpenAI-compatible `/v1`.
-
-Konfigurasi test yang lolos:
-
-```bash
-export RAG_MODEL_MODE=general
-export RAG_QWEN_JUDGE_ENABLED=true
-export RAG_VERIFICATION_AUDIT_ENABLED=true
-export RAG_QWEN_JUDGE_BASE_URL=http://127.0.0.1:11434/v1
-export RAG_QWEN_JUDGE_MODEL=qwen3:4b-instruct
-export RAG_QWEN_JUDGE_API_KEY=ollama
-python -m app.rag_regression_bench
-```
-
-Hasil test:
-
-- positive evidence: Qwen judge `available=True`, `supported=True`, `confidence=0.95`;
-- false premise: Qwen judge `available=True`, `supported=True`, `confidence=0.99`;
-- out-of-scope abstention: Qwen judge `available=True`, `supported=True`, `confidence=0.90`;
-- audit DB mencatat `qwen_judge` dan `local_keyword_verifier`;
-- regression benchmark dengan judge aktif lulus `4/4`.
-
-Keputusan teknis:
-
-- Qwen judge layak menjadi semantic verifier opsional;
-- local verifier tetap wajib sebagai baseline;
-- mode `hybrid_strict` tetap dipertahankan agar semantic judge tidak langsung menurunkan standar evidence;
-- Qwen Cloud API belum diintegrasikan, baru Ollama `/v1` yang sudah teruji.
-
-PR lanjutan:
-
-- timeout policy untuk judge;
-- provider abstraction agar judge bisa memakai Ollama, Qwen API, atau OpenAI API;
-- perbandingan latency dan confidence antar provider.
-
----
-
-### Tahap 4 — Deterministic Calculator Tool
-
-Status: prioritas berikutnya.
-
-Masalah: model lokal 4B dan 1.5B gagal pada tes `17 * 23`. Karena itu query numerik tidak boleh dijawab murni oleh LLM.
-
-Desain yang disarankan:
+Implemented files:
 
 ```text
+app/tools/__init__.py
 app/tools/calculator.py
-app/tools/math_detector.py
-app/tool_router.py
-```
-
-Prinsip implementasi:
-
-- gunakan parser aman berbasis `ast`, bukan `eval`;
-- dukung operasi dasar `+`, `-`, `*`, `/`, `//`, `%`, `**`, dan kurung;
-- kembalikan hasil deterministik sebagai string;
-- LLM hanya menjelaskan hasil tool, bukan menghitung sendiri;
-- Windows Calculator GUI tidak dijadikan backend utama karena sulit diaudit dan rapuh terhadap UI focus/clipboard/timing.
-
-Acceptance test awal:
-
-```text
-17 * 23 = 391
-(12 + 8) / 5 = 4
-2 ** 10 = 1024
-```
-
----
-
-### Tahap 5 — Provider Abstraction: Ollama, Qwen API, OpenAI API
-
-Status: roadmap.
-
-Tujuan: membuat answer generator dan semantic judge dapat memakai provider berbeda tanpa perubahan besar di pipeline.
-
-Target konfigurasi jangka menengah:
-
-```env
-RAG_LLM_PROVIDER=ollama|openai_compat|qwen_api|openai_api
-RAG_LLM_BASE_URL=
-RAG_LLM_MODEL=
-RAG_LLM_API_KEY=
-
-RAG_JUDGE_PROVIDER=ollama|openai_compat|qwen_api|openai_api
-RAG_JUDGE_BASE_URL=
-RAG_JUDGE_MODEL=
-RAG_JUDGE_API_KEY=
-```
-
-Pertimbangan: Qwen API diprioritaskan sebagai opsi eksternal karena limit harian besar dan biaya lebih ringan, sedangkan OpenAI API tetap disediakan sebagai pembanding kualitas dan fallback.
-
----
-
-### Tahap 6 — Quality Memory
-
-
-Status: belum selesai.
-
-Tujuan: membuat sistem belajar dari jawaban bagus dan buruk tanpa fine-tuning.
-
-Fitur:
-
-1. menyimpan jawaban bagus;
-2. menyimpan jawaban buruk;
-3. menyimpan corrected answer;
-4. menyimpan issue tags;
-5. mengambil contoh jawaban bagus untuk query mirip.
-
-Output yang diharapkan:
-
-```text
-data/quality/answer_quality.sqlite3
-collection: quality_good_answers
-```
-
-Kriteria jawaban yang boleh masuk quality-good collection:
-
-```text
-supported=True
-quality_pass=True
-issue_tags=[]
-artifact_like=False
-abstention_like=False
-feedback_label=good
-```
-
-Catatan: abstention yang aman boleh lulus quality, tetapi tidak otomatis menjadi contoh good answer untuk semua query karena fungsi utamanya adalah guardrail, bukan style factual answer.
-
----
-
-### Tahap 5 — Quality Good Answer Retrieval
-
-Status: belum selesai.
-
-Tujuan: memberi contoh jawaban bagus ke prompt agar model kecil meniru format yang benar.
-
-Alur:
-
-```text
-User query
-→ search quality_good_answers
-→ ambil 1–2 contoh relevan
-→ masukkan ke prompt sebagai style/example
-→ generate answer
-→ verifier + quality evaluator
-```
-
-Aturan:
-
-- Jangan campur `quality_good_answers` dengan collection dokumen utama.
-- Quality collection hanya untuk style dan pattern jawaban, bukan sumber fakta.
-- Jawaban final tetap wajib mengutip evidence dari dokumen sumber.
-
----
-
-### Tahap 6 — Refiner
-
-Status: belum selesai.
-
-Tujuan: memperbaiki jawaban yang quality-nya rendah tanpa menambah fakta baru.
-
-Alur:
-
-```text
-answer awal
-→ issue tags
-→ evidence pack
-→ deterministic refiner / LLM refiner
-→ refined answer
-→ verifier
-→ quality evaluator
-```
-
-Refiner harus dibatasi:
-
-- tidak boleh menambah fakta baru;
-- hanya boleh menulis ulang berdasarkan evidence;
-- wajib menghapus issue tags;
-- wajib menyertakan sumber;
-- harus bisa menolak bila evidence tidak cukup.
-
-Prioritas:
-
-```text
-deterministic refiner dahulu
-LLM refiner hanya opsional
-```
-
----
-
-### Tahap 7 — Parser Expansion
-
-Status: belum selesai.
-
-Tambahkan parser baru:
-
-| Format | Rencana |
-|---|---|
-| DOCX | `python-docx` atau parser ringan |
-| XLSX/CSV | parser tabel + row chunking |
-| PPTX | ekstraksi teks slide |
-| HTML | parser HTML ke markdown |
-| log/error | parser khusus log stacktrace |
-| source code | chunking berbasis fungsi/class |
-| image/scan PDF | OCR opsional, bukan default |
-
-Prinsip:
-
-- parser menyimpan hasil ke `data/parsed`;
-- output parser harus punya metadata;
-- jangan langsung kirim dokumen mentah ke LLM;
-- parser baru harus masuk regression test minimal dengan satu fixture kecil.
-
----
-
-### Tahap 8 — Better Chunking
-
-Status: belum selesai.
-
-Chunking saat ini masih berbasis karakter. Pengembangan berikutnya:
-
-1. heading-aware chunking;
-2. page-aware chunking untuk PDF;
-3. code-aware chunking;
-4. table-aware chunking;
-5. semantic chunking ringan;
-6. chunk quality scoring.
-
-Metadata chunk minimal:
-
-```json
-{
-  "source_name": "...",
-  "source_path": "...",
-  "page": 1,
-  "heading": "...",
-  "chunk_index": 0,
-  "chunk_hash": "...",
-  "document_hash": "...",
-  "parser": "..."
-}
-```
-
----
-
-### Tahap 9 — Evaluation Suite
-
-Status: sebagian selesai.
-
-Sudah ada:
-
-```text
-app/model_smoke_bench.py
+app/math_guard.py
+app/answer_query.py
 app/rag_regression_bench.py
 ```
 
-Perlu ditambah ke test formal:
+Verified:
 
 ```text
-tests/
-├── test_router.py
-├── test_parser.py
-├── test_chunking.py
-├── test_retrieval.py
-├── test_evidence.py
-├── test_answer_quality.py
-├── test_model_client.py
-└── test_rag_regression.py
+17 * 23 = ?  -> 391
+2^8 = ?      -> 256
+2**8 = ?     -> 256
+rag_regression_bench -> 6/6 passed
 ```
 
-Target evaluasi:
+## Next Steps
 
-- retrieval precision;
-- answer groundedness;
-- role correctness;
-- false-premise correction;
-- out-of-scope abstention;
-- latency;
-- memory usage;
-- context size;
-- fallback rate;
-- quality pass rate.
-
----
-
-### Tahap 10 — CLI/Orchestrator
-
-Status: belum selesai.
-
-Saat ini command masih tersebar. Buat CLI tunggal:
+### 1. Commit v2.2
 
 ```bash
-python -m app.main ingest
-python -m app.main ask "query"
-python -m app.main evidence "query"
-python -m app.main quality report
-python -m app.main model validate
-python -m app.main bench model
-python -m app.main bench rag
+git commit -m "Add v2.2 calculator tool and Gemini API foundation"
 ```
 
-Atau pakai Typer:
+### 2. Gemini API Live Test
+
+After selecting model and setting key:
 
 ```bash
-raglocal ingest
-raglocal ask "query"
-raglocal quality-report
-raglocal bench-model
-raglocal bench-rag
+export RAG_LLM_PROVIDER=openai_compatible
+export RAG_OPENAI_COMPAT_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+export RAG_OPENAI_COMPAT_MODEL="YOUR_GEMINI_MODEL"
+export RAG_OPENAI_COMPAT_API_KEY="YOUR_GEMINI_API_KEY"
+
+python -m app.answer_query "Apa fungsi Magika dan Chroma dalam pipeline RAG lokal ini?"
+python -m app.answer_query "17 * 23 = ?"
 ```
 
----
+Success criteria:
 
-### Tahap 11 — Local API / UI
+- RAG answer uses Gemini through OpenAI-compatible provider.
+- Arithmetic answer still uses `safe_calculator`.
+- No API key is printed.
 
-Status: belum dimulai.
+### 3. Provider Benchmark
 
-Setelah CLI stabil:
-
-- FastAPI local server;
-- simple web UI;
-- drag-and-drop dokumen;
-- daftar indexed files;
-- evidence viewer;
-- answer quality dashboard;
-- manual feedback form.
-
----
-
-## 4. Rencana Quality Learning
-
-Quality learning bukan fine-tuning. Sistem belajar melalui:
-
-1. issue tags;
-2. role rules;
-3. corrected answer;
-4. feedback label;
-5. good answer retrieval;
-6. prompt examples;
-7. evaluator refinement;
-8. regression benchmark.
-
-Alur masa depan:
+After Gemini model selection, compare:
 
 ```text
-Jawaban buruk
-→ issue tags
-→ corrected answer
-→ simpan feedback
-→ jika sudah good, masuk quality_good_answers
-→ dipakai sebagai example untuk query mirip
+local Ollama
+Gemini API
+NVIDIA NIM when ready
+Qwen API if needed
 ```
 
----
-
-## 5. Rencana Fine-tuning
-
-Fine-tuning belum prioritas.
-
-Fine-tuning hanya dipertimbangkan jika:
-
-- minimal ada 500–1000 pasangan query/evidence/good answer;
-- format data konsisten;
-- quality pass tinggi;
-- hardware dan runtime mendukung;
-- baseline RAG + quality memory sudah tidak cukup.
-
-Sebelum itu, gunakan:
+Metrics:
 
 ```text
-RAG + quality memory + few-shot examples + regression benchmark
+latency
+quality_score
+support_ratio
+artifact_like
+abstention_like
+error rate
+quota/cost suitability
 ```
 
----
+## Future Milestones
 
-## 6. Target Milestone
+### v2.3 — Provider Selection and Fallback Policy
 
-### Milestone A — Stable Local RAG
+Candidate features:
 
-Status: selesai.
+- provider benchmark script;
+- quota-aware routing;
+- local fallback;
+- provider metadata in answer records.
 
-- model lokal tersedia;
-- jawaban dasar supported;
-- quality report bersih;
-- feedback dapat disimpan;
-- safe abstention bekerja.
+### v2.4 — Retrieval and Corpus Growth
 
-### Milestone B — General Model Baseline
+Candidate features:
 
-Status: selesai untuk baseline awal.
+- larger Chroma corpus;
+- more domain-specific test cases;
+- improved reranking;
+- stronger out-of-scope detection.
 
-- Qwen 4B aktif;
-- mode switch stabil;
-- benchmark RAG 1.5B vs 4B tersedia;
-- regression benchmark lulus.
+### v2.5 — NVIDIA NIM Evaluation
 
-### Milestone C — Qwen Judge and Quality Memory
+NIM should be evaluated after the Chroma corpus has enough representative data and the target model is chosen.
 
-Status: berikutnya.
+## Rules
 
-- Qwen judge aktif secara opsional;
-- audit verifier stabil;
-- good answer collection aktif;
-- prompt dapat mengambil contoh jawaban bagus.
-
-### Milestone D — Document Expansion
-
-Status: belum selesai.
-
-- DOCX, XLSX, PPTX, HTML parser;
-- semantic/heading-aware chunking;
-- metadata lebih kaya.
-
-### Milestone E — Local Productization
-
-Status: belum dimulai.
-
-- CLI tunggal;
-- local API;
-- UI sederhana;
-- dokumentasi final;
-- packaging lokal.
+1. Never trust raw LLM arithmetic for final answers.
+2. Keep local baseline green before testing cloud APIs.
+3. Never commit API keys.
+4. Do not commit generated answer/evidence/benchmark JSON unless intentionally archiving an experiment.
+5. Every provider must pass the same regression tests.

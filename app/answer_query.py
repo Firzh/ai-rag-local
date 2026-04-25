@@ -20,6 +20,7 @@ from app.extractive_answer import build_extractive_answer
 from app.answer_quality import is_answer_artifact_like
 from app.answer_evaluator import evaluate_answer_quality
 from app.quality_store import AnswerQualityStore
+from app.math_guard import try_calculate_query
 
 
 console = Console()
@@ -100,6 +101,113 @@ def run_fallback_if_needed(
 
     return answer, local_verification
 
+def handle_calculator_query(query: str) -> bool:
+    calc_result = try_calculate_query(query)
+
+    if calc_result is None:
+        return False
+
+    final_answer = f"Hasil {calc_result.expression} = {calc_result.result}."
+
+    verification = {
+        "supported": True,
+        "support_ratio": 1.0,
+        "matched_terms": ["calculator", calc_result.expression, calc_result.result],
+        "notes": ["Jawaban dihitung oleh deterministic calculator tool."],
+        "verifier_mode": "tool_only",
+        "local": {
+            "supported": True,
+            "support_ratio": 1.0,
+            "matched_terms": ["calculator", calc_result.expression, calc_result.result],
+            "notes": ["Deterministic calculator result."],
+        },
+        "llm_judge": {
+            "verifier": "qwen_judge",
+            "available": False,
+            "supported": None,
+            "confidence": 0.0,
+            "notes": ["Qwen judge tidak digunakan untuk calculator tool."],
+        },
+        "tool": {
+            "name": "safe_calculator",
+            "expression": calc_result.expression,
+            "result": calc_result.result,
+        },
+    }
+
+    quality = {
+        "artifact_like": False,
+        "abstention_like": False,
+        "issue_tags": [],
+        "quality_score": 1.0,
+        "quality_pass": True,
+        "tool_used": "safe_calculator",
+    }
+
+    quality_id = None
+
+    if settings.enable_quality_store:
+        quality_store = AnswerQualityStore()
+        quality_id = quality_store.insert_answer_record(
+            query=query,
+            answer=final_answer,
+            evidence_path="",
+            verification=verification,
+            artifact_like=False,
+            quality_score=1.0,
+            issue_tags=[],
+            metadata={
+                "llm_provider": "tool",
+                "llm_model": "safe_calculator",
+                "tool_name": "safe_calculator",
+                "expression": calc_result.expression,
+                "result": calc_result.result,
+            },
+        )
+
+        if settings.verification_audit_enabled:
+            quality_store.insert_verification_run(
+                query=query,
+                answer=final_answer,
+                verifier_name="deterministic_calculator",
+                verdict=verification,
+                answer_quality_id=quality_id,
+                metadata={"stage": "tool", "tool_name": "safe_calculator"},
+            )
+
+    record = {
+        "query": query,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "answer": final_answer,
+        "raw_answer": final_answer,
+        "verification": verification,
+        "evidence_path": "",
+        "evidence_pack": {},
+        "llm_provider": "tool",
+        "llm_model": "safe_calculator",
+        "quality": quality,
+        "quality_id": quality_id,
+    }
+
+    json_path, md_path = save_answer_record(record)
+
+    console.print(f"\n[bold]Query:[/bold] {query}")
+    console.print("[green]Tool used:[/green] safe_calculator")
+    console.print("\n[bold green]Answer[/bold green]\n")
+    console.print(final_answer)
+    console.print("\n[bold]Verification[/bold]")
+    console.print(verification)
+    console.print("\n[bold]Quality[/bold]")
+    console.print(quality)
+
+    if quality_id is not None:
+        console.print(f"[green]Quality record ID:[/green] {quality_id}")
+
+    console.print(f"\n[green]Saved answer JSON:[/green] {json_path}")
+    console.print(f"[green]Saved answer MD:[/green] {md_path}")
+
+    return True
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -113,6 +221,9 @@ def main() -> None:
         console.print('[yellow]Gunakan:[/yellow] python -m app.answer_query "pertanyaan Anda"')
         return
 
+    if handle_calculator_query(query):
+        return
+    
     compressor = ContextCompressor()
     evidence_pack = compressor.build_evidence_pack(query)
     evidence_path = compressor.save_evidence_pack(evidence_pack)

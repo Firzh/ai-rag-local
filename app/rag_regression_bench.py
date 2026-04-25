@@ -74,6 +74,18 @@ CASES = [
             "jokowi",
         ],
     ),
+        RagCase(
+        name="calculator_arithmetic_tool",
+        query="17 * 23 = ?",
+        expected_all=["391"],
+        forbidden_any=["401", "481"],
+    ),
+        RagCase(
+        name="calculator_power_tool",
+        query="2^8 = ?",
+        expected_all=["256"],
+        forbidden_any=["dokumen belum cukup", "tidak cukup", "401", "481"],
+    ),
 ]
 
 
