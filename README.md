@@ -42,7 +42,7 @@ Status terakhir:
 | Model smoke benchmark | 4/5 lulus |
 | RAG regression benchmark | 4/4 lulus |
 | Safe abstention quality | Lulus |
-| Qwen judge | Tersedia sebagai opsi, masih default OFF |
+| Qwen judge | Integration test lulus via Ollama OpenAI-compatible `/v1`; tetap opsional dan default OFF untuk baseline lokal |
 | Arithmetic reasoning | Belum aman tanpa tool deterministik |
 
 Catatan penting: model lokal kecil dan 4B tidak boleh dipercaya untuk kalkulasi numerik. Tes `17 * 23` masih gagal pada model 4B maupun 1.5B, sehingga perhitungan harus diarahkan ke tool deterministik seperti Python/calculator layer.
@@ -87,7 +87,7 @@ File masuk
 | Context Compressor | Mengubah retrieval mentah menjadi evidence pack pendek |
 | Ollama | Runtime model lokal |
 | Local Verifier | Mengecek apakah jawaban didukung evidence |
-| Qwen Judge | Verifier LLM opsional, default OFF |
+| Qwen Judge | Verifier LLM opsional; sudah diuji via Ollama `/v1` dengan `qwen3:4b-instruct` |
 | Answer Evaluator | Mendeteksi artifact, role confusion, dan safe abstention |
 | Quality Store | Menyimpan kualitas jawaban, feedback, dan audit verifier |
 | Model Smoke Bench | Benchmark singkat untuk model aktif |
@@ -399,6 +399,32 @@ SUMMARY: 4/4 passed
 
 ---
 
+### 12.3 Hybrid Qwen Judge Integration Test
+
+Qwen judge sudah diuji sebagai verifier semantik opsional melalui endpoint Ollama OpenAI-compatible. Pengujian menggunakan `qwen3:4b-instruct` sebagai judge model. Ini berbeda dari Qwen Cloud API; integrasi cloud Qwen masih menjadi roadmap provider abstraction.
+
+Konfigurasi runtime untuk test judge:
+
+```bash
+export RAG_MODEL_MODE=general
+export RAG_QWEN_JUDGE_ENABLED=true
+export RAG_VERIFICATION_AUDIT_ENABLED=true
+export RAG_QWEN_JUDGE_BASE_URL=http://127.0.0.1:11434/v1
+export RAG_QWEN_JUDGE_MODEL=qwen3:4b-instruct
+export RAG_QWEN_JUDGE_API_KEY=ollama
+```
+
+Hasil integration test:
+
+```text
+positive evidence     : qwen_judge available=True, supported=True, confidence=0.95
+false premise         : qwen_judge available=True, supported=True, confidence=0.99
+out-of-scope abstain  : qwen_judge available=True, supported=True, confidence=0.90; final verdict tetap strict terhadap local verifier
+RAG regression bench  : SUMMARY 4/4 passed dengan judge aktif
+```
+
+Interpretasi: Qwen judge sudah layak dipakai sebagai semantic verifier tambahan, tetapi belum menggantikan local verifier. Pada mode `hybrid_strict`, verdict akhir tetap berhati-hati ketika lexical verifier belum mendukung jawaban, sementara `abstention_like=True` tetap dapat lolos quality evaluator untuk jawaban penolakan yang aman.
+
 ## 13. Status Saat Ini
 
 Sudah berjalan:
@@ -415,6 +441,7 @@ Sudah berjalan:
 - local verifier;
 - answer quality store;
 - verification audit store;
+- Qwen judge hybrid integration via Ollama `/v1`;
 - safe abstention evaluator;
 - model smoke benchmark;
 - RAG regression benchmark;
@@ -422,7 +449,11 @@ Sudah berjalan:
 
 Belum final:
 
-- Qwen judge integration test aktif;
+- Qwen Cloud API sebagai provider eksternal;
+- OpenAI API sebagai provider eksternal;
+- provider abstraction generik untuk answer model dan judge;
+- timeout/fallback policy yang lebih eksplisit untuk semantic judge;
+- deterministic calculator tool untuk kalkulasi;
 - quality good answers collection;
 - LLM-based answer refiner;
 - parser DOCX/XLSX/PPTX;
@@ -450,6 +481,32 @@ python -m app.validate_models
 ```
 
 Pastikan nama model di `.env` sama persis dengan nama di `ollama list`.
+
+### Qwen judge aktif tetapi masih terbaca nonaktif
+
+Pastikan export dilakukan pada terminal yang sama sebelum menjalankan Python:
+
+```bash
+export RAG_QWEN_JUDGE_ENABLED=true
+export RAG_VERIFICATION_AUDIT_ENABLED=true
+export RAG_QWEN_JUDGE_BASE_URL=http://127.0.0.1:11434/v1
+export RAG_QWEN_JUDGE_MODEL=qwen3:4b-instruct
+export RAG_QWEN_JUDGE_API_KEY=ollama
+```
+
+Cek nilai mentah environment dan settings:
+
+```bash
+python - <<'PY'
+import os
+from app.config import settings
+print(os.getenv('RAG_QWEN_JUDGE_ENABLED'))
+print(os.getenv('RAG_VERIFICATION_AUDIT_ENABLED'))
+print(settings.qwen_judge_enabled)
+print(settings.verification_audit_enabled)
+print(settings.qwen_judge_base_url)
+PY
+```
 
 ### `.env` sudah benar tetapi config masih lama
 

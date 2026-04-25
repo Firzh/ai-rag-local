@@ -144,16 +144,54 @@ RAG_USE_QUALITY_EXAMPLES=false
 
 ### 4.5 Qwen Judge dan Verification Audit
 
+Default baseline lokal tetap menonaktifkan judge agar regression bisa dijalankan cepat dan murah. Untuk integration test hybrid, Qwen judge sudah diuji melalui Ollama OpenAI-compatible `/v1`.
+
+Baseline lokal:
+
 ```env
 RAG_VERIFICATION_AUDIT_ENABLED=false
 RAG_QWEN_JUDGE_ENABLED=false
-RAG_QWEN_JUDGE_MODEL=qwen2.5:4b-instruct
+```
+
+Integration test judge yang sudah lulus:
+
+```env
+RAG_VERIFICATION_AUDIT_ENABLED=true
+RAG_QWEN_JUDGE_ENABLED=true
+RAG_QWEN_JUDGE_BASE_URL=http://127.0.0.1:11434/v1
+RAG_QWEN_JUDGE_MODEL=qwen3:4b-instruct
+RAG_QWEN_JUDGE_API_KEY=ollama
 RAG_QWEN_JUDGE_TEMPERATURE=0.0
 RAG_QWEN_JUDGE_MAX_TOKENS=600
 RAG_QWEN_JUDGE_CONFIDENCE_THRESHOLD=0.80
 ```
 
-Qwen judge masih opsional dan default OFF. Local verifier tetap menjadi baseline stabil.
+Behavior yang diharapkan:
+
+- `local_keyword_verifier` selalu berjalan;
+- `qwen_judge` berjalan hanya jika enabled dan endpoint tersedia;
+- hasil keduanya disimpan di `answer_verification_runs` bila audit aktif;
+- mode hybrid tetap strict: semantic judge membantu diagnosis, tetapi tidak otomatis mengganti local verifier pada semua kasus;
+- safe abstention tetap boleh quality-pass melalui `abstention_like=True`.
+
+Catatan: ini belum sama dengan integrasi Qwen Cloud API. Cloud Qwen akan masuk dalam provider abstraction bersama OpenAI API.
+
+---
+
+### 4.6 Deterministic Calculator Tool Planned
+
+Arithmetic tidak boleh diserahkan langsung ke LLM. Tool kalkulator harus deterministik, aman, dan bisa diaudit. Backend utama yang disarankan adalah parser Python berbasis `ast`, bukan Windows Calculator GUI.
+
+Spesifikasi awal:
+
+```text
+Input  : ekspresi matematika aman
+Output : hasil deterministik sebagai string
+Ops    : +, -, *, /, //, %, **, kurung
+Reject : import, function call, attribute access, variable bebas
+```
+
+Windows Calculator dapat tetap dibuka manual sebagai bantuan pengguna, tetapi tidak dijadikan backend otomatis karena tidak stabil untuk automation headless.
 
 ---
 
@@ -475,7 +513,7 @@ qwen3:4b-instruct
 
 Status:
 
-- aktif sebagai baseline `general` v2.1;
+- aktif sebagai baseline `general` v2.1; Qwen judge hybrid lulus via Ollama `/v1`;
 - lulus RAG regression 4/4;
 - lebih stabil daripada 1.5B pada acronym/semantic drift;
 - belum aman untuk arithmetic tanpa tool deterministik.
@@ -542,7 +580,7 @@ Safe abstention dapat memiliki `supported=False` pada local verifier karena tida
 - Parser PDF belum dioptimalkan untuk dokumen scan/OCR.
 - Chunking masih berbasis karakter, belum semantic/heading-aware.
 - Verifier masih keyword-based.
-- Qwen judge belum dijadikan baseline aktif.
+- Qwen judge sudah lulus integration test via Ollama `/v1`, tetapi masih opsional dan belum menjadi default wajib.
 - Good answer retrieval belum aktif.
 - API/server web belum tersedia.
 - Unit test formal belum lengkap.

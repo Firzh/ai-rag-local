@@ -1,5 +1,44 @@
 # Changelog
 
+## v2.1.1 — Hybrid Qwen Judge Integration
+
+Status: integration baseline passed.
+
+### Added
+
+- Documented Qwen judge integration through Ollama OpenAI-compatible `/v1`.
+- Documented runtime env for enabling semantic judge and verification audit.
+- Added roadmap notes for Qwen Cloud API, OpenAI API, and provider abstraction.
+- Added roadmap notes for deterministic calculator tooling.
+
+### Verified
+
+Observed judge configuration:
+
+```text
+RAG_QWEN_JUDGE_ENABLED=true
+RAG_VERIFICATION_AUDIT_ENABLED=true
+RAG_QWEN_JUDGE_BASE_URL=http://127.0.0.1:11434/v1
+RAG_QWEN_JUDGE_MODEL=qwen3:4b-instruct
+```
+
+Observed integration results:
+
+```text
+positive evidence    : qwen_judge supported=True, confidence=0.95
+false premise        : qwen_judge supported=True, confidence=0.99
+out-of-scope abstain : qwen_judge supported=True, confidence=0.90
+rag_regression_bench : SUMMARY 4/4 passed with judge enabled
+```
+
+### Design Notes
+
+- Qwen judge is usable as an optional semantic verifier.
+- Local keyword verifier remains mandatory.
+- `hybrid_strict` remains the safer final-verdict mode.
+- Qwen Cloud API is not yet integrated; this milestone only verifies local Qwen through Ollama `/v1`.
+- Arithmetic remains unsafe without deterministic tool support.
+
 ## v2.1 — General 4B Baseline and Regression Benchmarks
 
 Status: local baseline passed.

@@ -47,7 +47,7 @@ Status baseline:
 | RAG regression benchmark | 4/4 lulus |
 | Safe abstention evaluator | Lulus |
 | Verification audit store | Lulus |
-| Qwen judge aktif | Belum diuji, default OFF |
+| Qwen judge aktif | Integration test lulus sebagai verifier opsional via Ollama `/v1`; default OFF untuk baseline lokal |
 | Arithmetic reasoning | Belum aman tanpa tool |
 
 Implikasi keputusan:
@@ -57,6 +57,13 @@ RAG_MODEL_MODE=general
 RAG_OLLAMA_MODEL_GENERAL=qwen3:4b-instruct
 RAG_QWEN_JUDGE_ENABLED=false
 RAG_VERIFICATION_AUDIT_ENABLED=false
+
+# Untuk integration test judge:
+# RAG_QWEN_JUDGE_ENABLED=true
+# RAG_VERIFICATION_AUDIT_ENABLED=true
+# RAG_QWEN_JUDGE_BASE_URL=http://127.0.0.1:11434/v1
+# RAG_QWEN_JUDGE_MODEL=qwen3:4b-instruct
+# RAG_QWEN_JUDGE_API_KEY=ollama
 ```
 
 ---
@@ -113,38 +120,103 @@ Catatan:
 
 ### Tahap 3 — Qwen Judge Integration Test
 
-Status: berikutnya.
+Status: selesai sebagai integration baseline opsional.
 
-Tujuan: menguji verifier LLM opsional tanpa mengganggu local verifier.
+Tujuan tahap ini adalah menguji verifier LLM opsional tanpa mengganti local verifier. Test sudah dilakukan menggunakan `qwen3:4b-instruct` melalui endpoint Ollama OpenAI-compatible `/v1`.
 
-Langkah aman:
-
-1. pastikan baseline lokal lulus dengan Qwen judge OFF;
-2. aktifkan audit terlebih dahulu;
-3. aktifkan Qwen judge pada query kecil;
-4. bandingkan verdict local verifier vs Qwen judge;
-5. pastikan jika Qwen judge gagal, pipeline fallback ke local verifier;
-6. jangan jadikan Qwen judge wajib sebelum stabil.
-
-Command awal:
+Konfigurasi test yang lolos:
 
 ```bash
 export RAG_MODEL_MODE=general
-export RAG_VERIFICATION_AUDIT_ENABLED=true
 export RAG_QWEN_JUDGE_ENABLED=true
-python -m app.answer_query "Apakah Chroma adalah parser PDF?"
+export RAG_VERIFICATION_AUDIT_ENABLED=true
+export RAG_QWEN_JUDGE_BASE_URL=http://127.0.0.1:11434/v1
+export RAG_QWEN_JUDGE_MODEL=qwen3:4b-instruct
+export RAG_QWEN_JUDGE_API_KEY=ollama
+python -m app.rag_regression_bench
 ```
 
-Kriteria lulus:
+Hasil test:
 
-- local verifier tetap berjalan;
-- Qwen judge tercatat di `answer_verification_runs`;
-- jika Qwen judge tidak tersedia, pipeline tidak crash;
-- quality report tetap bisa dibaca.
+- positive evidence: Qwen judge `available=True`, `supported=True`, `confidence=0.95`;
+- false premise: Qwen judge `available=True`, `supported=True`, `confidence=0.99`;
+- out-of-scope abstention: Qwen judge `available=True`, `supported=True`, `confidence=0.90`;
+- audit DB mencatat `qwen_judge` dan `local_keyword_verifier`;
+- regression benchmark dengan judge aktif lulus `4/4`.
+
+Keputusan teknis:
+
+- Qwen judge layak menjadi semantic verifier opsional;
+- local verifier tetap wajib sebagai baseline;
+- mode `hybrid_strict` tetap dipertahankan agar semantic judge tidak langsung menurunkan standar evidence;
+- Qwen Cloud API belum diintegrasikan, baru Ollama `/v1` yang sudah teruji.
+
+PR lanjutan:
+
+- timeout policy untuk judge;
+- provider abstraction agar judge bisa memakai Ollama, Qwen API, atau OpenAI API;
+- perbandingan latency dan confidence antar provider.
 
 ---
 
-### Tahap 4 — Quality Memory
+### Tahap 4 — Deterministic Calculator Tool
+
+Status: prioritas berikutnya.
+
+Masalah: model lokal 4B dan 1.5B gagal pada tes `17 * 23`. Karena itu query numerik tidak boleh dijawab murni oleh LLM.
+
+Desain yang disarankan:
+
+```text
+app/tools/calculator.py
+app/tools/math_detector.py
+app/tool_router.py
+```
+
+Prinsip implementasi:
+
+- gunakan parser aman berbasis `ast`, bukan `eval`;
+- dukung operasi dasar `+`, `-`, `*`, `/`, `//`, `%`, `**`, dan kurung;
+- kembalikan hasil deterministik sebagai string;
+- LLM hanya menjelaskan hasil tool, bukan menghitung sendiri;
+- Windows Calculator GUI tidak dijadikan backend utama karena sulit diaudit dan rapuh terhadap UI focus/clipboard/timing.
+
+Acceptance test awal:
+
+```text
+17 * 23 = 391
+(12 + 8) / 5 = 4
+2 ** 10 = 1024
+```
+
+---
+
+### Tahap 5 — Provider Abstraction: Ollama, Qwen API, OpenAI API
+
+Status: roadmap.
+
+Tujuan: membuat answer generator dan semantic judge dapat memakai provider berbeda tanpa perubahan besar di pipeline.
+
+Target konfigurasi jangka menengah:
+
+```env
+RAG_LLM_PROVIDER=ollama|openai_compat|qwen_api|openai_api
+RAG_LLM_BASE_URL=
+RAG_LLM_MODEL=
+RAG_LLM_API_KEY=
+
+RAG_JUDGE_PROVIDER=ollama|openai_compat|qwen_api|openai_api
+RAG_JUDGE_BASE_URL=
+RAG_JUDGE_MODEL=
+RAG_JUDGE_API_KEY=
+```
+
+Pertimbangan: Qwen API diprioritaskan sebagai opsi eksternal karena limit harian besar dan biaya lebih ringan, sedangkan OpenAI API tetap disediakan sebagai pembanding kualitas dan fallback.
+
+---
+
+### Tahap 6 — Quality Memory
+
 
 Status: belum selesai.
 

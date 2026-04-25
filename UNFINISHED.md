@@ -30,6 +30,8 @@ Bagian yang sudah berhasil berjalan:
 - model smoke benchmark tersedia;
 - RAG regression benchmark tersedia;
 - RAG regression benchmark baseline v2.1 lulus 4/4.
+- Qwen judge hybrid integration via Ollama `/v1` lulus.
+- Regression benchmark dengan judge aktif lulus 4/4.
 
 ---
 
@@ -53,29 +55,45 @@ Diperlukan:
 
 ---
 
-### 2.2 Qwen judge belum menjadi baseline aktif
+### 2.2 Qwen judge sudah lulus integration test, tetapi belum menjadi default wajib
 
-Qwen judge sudah tersedia sebagai opsi, tetapi masih default OFF.
+Qwen judge sudah berhasil diaktifkan melalui Ollama OpenAI-compatible `/v1` dengan `qwen3:4b-instruct`. Audit DB sudah mencatat `qwen_judge` dengan confidence nonzero pada query positive evidence, false premise, dan out-of-scope abstention.
 
-Belum selesai:
+Yang masih belum selesai:
 
-- test Qwen judge dengan endpoint aktif;
-- cek behavior ketika judge timeout;
-- cek strict hybrid verdict;
-- simpan audit verdict secara konsisten;
-- bandingkan false positive/false negative local verifier vs Qwen judge.
+- timeout policy ketika judge lambat atau endpoint tidak tersedia;
+- retry/backoff policy;
+- provider abstraction agar judge bisa memakai Ollama, Qwen API cloud, atau OpenAI API;
+- benchmark biaya/latency/kualitas untuk Qwen API vs OpenAI API;
+- kalibrasi final verdict ketika semantic judge mendukung tetapi lexical verifier rendah.
 
-Prinsip:
+Prinsip tetap:
 
 ```text
 local verifier tetap baseline
 qwen judge opsional
 qwen judge tidak boleh membuat pipeline crash
+hybrid_strict lebih aman daripada semantic-only verdict
 ```
 
 ---
 
-### 2.3 Quality evaluator masih perlu diperkuat
+### 2.3 Qwen API dan OpenAI API belum diabstraksikan
+
+Saat ini yang sudah diuji adalah Qwen lokal melalui Ollama `/v1`, bukan Qwen Cloud API. Pengembangan berikutnya perlu membuat provider abstraction agar answer generator dan judge bisa berpindah antara local Ollama, Qwen API, dan OpenAI API.
+
+Alasan prioritas Qwen API:
+
+- limit harian relatif besar;
+- biaya lebih ringan dibanding banyak skenario OpenAI API;
+- cocok sebagai semantic judge eksternal bila model lokal kurang kuat.
+
+OpenAI API tetap berguna sebagai pembanding kualitas dan fallback, tetapi tidak boleh menjadi ketergantungan wajib.
+
+---
+
+### 2.4 Quality evaluator masih perlu diperkuat
+
 
 Safe abstention sudah ditangani, tetapi evaluator masih perlu diperluas untuk kasus lain.
 
@@ -335,7 +353,7 @@ Urutan paling aman:
 1. rapikan dokumentasi baseline v2.1;
 2. commit `answer_evaluator.py`, `model_smoke_bench.py`, dan `rag_regression_bench.py`;
 3. bersihkan output benchmark/evidence/answer yang tidak perlu dikomit;
-4. jalankan Qwen judge integration test;
+4. dokumentasikan Qwen judge integration test yang sudah lulus;
 5. finalisasi audit verifier behavior;
 6. perluas issue tags untuk semantic drift dan numeric hallucination;
 7. buat quality_good_answers collection;
