@@ -64,19 +64,38 @@ def find_role_violations(answer: str, query: str) -> list[str]:
 
     return issues
 
+def is_safe_abstention_answer(answer: str) -> bool:
+    lower = answer.lower()
+
+    abstention_markers = [
+        "dokumen belum cukup",
+        "evidence belum cukup",
+        "tidak cukup mendukung",
+        "tidak ada informasi",
+        "tidak ada data",
+        "tidak ditemukan",
+        "tidak tersedia",
+        "tidak memuat informasi",
+    ]
+
+    return any(marker in lower for marker in abstention_markers)
+
 
 def calculate_quality_score(
     verification: dict[str, Any],
     artifact_like: bool,
     issue_tags: list[str],
+    abstention_like: bool = False,
 ) -> float:
     supported = bool(verification.get("supported"))
     support_ratio = float(verification.get("support_ratio", 0.0))
 
     # Support ratio dari verifier berbasis keyword tidak selalu mewakili kualitas.
-    # Jadi supported=True + no issue tetap diberi skor layak.
+    # Jawaban abstention yang aman juga boleh dinilai layak walau support_ratio rendah.
     if supported:
         score = 0.75
+    elif abstention_like:
+        score = 0.70
     else:
         score = 0.25
 
@@ -98,6 +117,7 @@ def evaluate_answer_quality(
     verification: dict[str, Any],
 ) -> dict[str, Any]:
     artifact_like = is_answer_artifact_like(answer, query)
+    abstention_like = is_safe_abstention_answer(answer)
 
     issue_tags = []
     issue_tags.extend(detect_format_issues(answer))
@@ -107,10 +127,11 @@ def evaluate_answer_quality(
         verification=verification,
         artifact_like=artifact_like,
         issue_tags=issue_tags,
+        abstention_like=abstention_like,
     )
 
     quality_pass = (
-        bool(verification.get("supported"))
+        (bool(verification.get("supported")) or abstention_like)
         and not artifact_like
         and not issue_tags
         and quality_score >= 0.70
@@ -118,6 +139,7 @@ def evaluate_answer_quality(
 
     return {
         "artifact_like": artifact_like,
+        "abstention_like": abstention_like,
         "issue_tags": issue_tags,
         "quality_score": quality_score,
         "quality_pass": quality_pass,
