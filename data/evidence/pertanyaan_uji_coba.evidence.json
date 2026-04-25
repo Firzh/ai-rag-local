@@ -1,0 +1,12 @@
+{
+  "query": "pertanyaan uji coba",
+  "created_at": "2026-04-22T13:27:57.366904+00:00",
+  "sources": [],
+  "important_facts": [],
+  "important_quotes": [],
+  "uncertainty": [
+    "Tidak ada chunk relevan yang ditemukan.",
+    "Tidak ada fakta eksplisit yang cocok langsung dengan query."
+  ],
+  "llm_instruction": "Jawab hanya berdasarkan evidence pack ini. Jika evidence tidak cukup, nyatakan bahwa dokumen belum cukup mendukung jawaban."
+}

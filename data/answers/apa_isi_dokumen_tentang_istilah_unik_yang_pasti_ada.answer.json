@@ -1,0 +1,193 @@
+{
+  "query": "apa isi dokumen tentang <istilah unik yang pasti ada>",
+  "created_at": "2026-04-22T17:03:45.478168+00:00",
+  "answer": "Dokumen tentang RAG lokal adalah sistem retrieval augmented generation berbasis dokumen lokal. Proyek ini menggunakan Magika sebagai file router, OpenDataLoader PDF sebagai parser PDF, FastEmbed sebagai embedder, dan Chroma sebagai vector database. Pipeline utama adalah file masuk, deteksi tipe file, parsing, chunking, embedding, penyimpanan ke Chroma, retrieval, lalu jawaban dari model Qwen. Mini Graph Layer digunakan untuk memetakan hubungan antara dokumen, chunk, parser, filetype, dan term penting. (sumber: project-notes.md, chunk 0)",
+  "raw_answer": "Dokumen tentang RAG lokal adalah sistem retrieval augmented generation berbasis dokumen lokal. Proyek ini menggunakan Magika sebagai file router, OpenDataLoader PDF sebagai parser PDF, FastEmbed sebagai embedder, dan Chroma sebagai vector database. Pipeline utama adalah file masuk, deteksi tipe file, parsing, chunking, embedding, penyimpanan ke Chroma, retrieval, lalu jawaban dari model Qwen. Mini Graph Layer digunakan untuk memetakan hubungan antara dokumen, chunk, parser, filetype, dan term penting.\n\nSumber: (project-notes.md, chunk 0)",
+  "verification": {
+    "supported": true,
+    "support_ratio": 0.8913,
+    "matched_terms": [
+      "antara",
+      "augmented",
+      "berbasis",
+      "chroma",
+      "chunk",
+      "chunking",
+      "database",
+      "deteksi",
+      "digunakan",
+      "dokumen",
+      "embedder",
+      "embedding",
+      "fastembed",
+      "file",
+      "filetype",
+      "generation",
+      "graph",
+      "hubungan",
+      "jawaban",
+      "layer",
+      "lokal",
+      "magika",
+      "masuk",
+      "memetakan",
+      "mini",
+      "model",
+      "opendataloader",
+      "parser",
+      "parsing",
+      "penting",
+      "penyimpanan",
+      "pipeline",
+      "proyek",
+      "qwen",
+      "retrieval",
+      "router",
+      "sistem",
+      "term",
+      "tipe",
+      "utama",
+      "vector"
+    ],
+    "notes": [
+      "Gagal menghubungi Qwen judge: HTTPConnectionPool(host='127.0.0.1', port=8080): Max retries exceeded with url: /v1/chat/completions (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=8080): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+    ],
+    "verifier_mode": "local_only",
+    "local": {
+      "supported": true,
+      "support_ratio": 0.8913,
+      "matched_terms": [
+        "antara",
+        "augmented",
+        "berbasis",
+        "chroma",
+        "chunk",
+        "chunking",
+        "database",
+        "deteksi",
+        "digunakan",
+        "dokumen",
+        "embedder",
+        "embedding",
+        "fastembed",
+        "file",
+        "filetype",
+        "generation",
+        "graph",
+        "hubungan",
+        "jawaban",
+        "layer",
+        "lokal",
+        "magika",
+        "masuk",
+        "memetakan",
+        "mini",
+        "model",
+        "opendataloader",
+        "parser",
+        "parsing",
+        "penting",
+        "penyimpanan",
+        "pipeline",
+        "proyek",
+        "qwen",
+        "retrieval",
+        "router",
+        "sistem",
+        "term",
+        "tipe",
+        "utama",
+        "vector"
+      ],
+      "notes": []
+    },
+    "llm_judge": {
+      "verifier": "qwen_judge",
+      "available": false,
+      "supported": null,
+      "confidence": 0.0,
+      "latency_ms": null,
+      "notes": [
+        "Gagal menghubungi Qwen judge: HTTPConnectionPool(host='127.0.0.1', port=8080): Max retries exceeded with url: /v1/chat/completions (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=8080): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+      ]
+    }
+  },
+  "evidence_path": "F:\\AI-Models\\ai-rag-local\\data\\evidence\\apa_isi_dokumen_tentang_istilah_unik_yang_pasti_ada.evidence.json",
+  "evidence_pack": {
+    "query": "apa isi dokumen tentang <istilah unik yang pasti ada>",
+    "created_at": "2026-04-22T17:03:33.152579+00:00",
+    "sources": [
+      {
+        "source_name": "project-notes.md",
+        "chunk_index": 0,
+        "parser": "text_parser",
+        "retrieval": "vector+fts",
+        "score": 0.4672,
+        "distance": 0.7428,
+        "bm25_score": -0.6806
+      },
+      {
+        "source_name": "test-rag.txt",
+        "chunk_index": 0,
+        "parser": "text_parser",
+        "retrieval": "vector+fts",
+        "score": 0.4191,
+        "distance": 0.8168,
+        "bm25_score": -0.8962
+      }
+    ],
+    "important_facts": [
+      {
+        "text": "Pipeline utama adalah file masuk, deteksi tipe file, parsing, chunking, embedding, penyimpanan ke Chroma, retrieval, lalu jawaban dari model Qwen.",
+        "source_name": "project-notes.md",
+        "parser": "text_parser",
+        "chunk_index": 0,
+        "retrieval": "vector+fts",
+        "score": 0.4672
+      },
+      {
+        "text": "Mini Graph Layer digunakan untuk memetakan hubungan antara dokumen, chunk, parser, filetype, dan term penting.",
+        "source_name": "project-notes.md",
+        "parser": "text_parser",
+        "chunk_index": 0,
+        "retrieval": "vector+fts",
+        "score": 0.4672
+      },
+      {
+        "text": "RAG lokal adalah sistem retrieval augmented generation berbasis dokumen lokal.",
+        "source_name": "test-rag.txt",
+        "parser": "text_parser",
+        "chunk_index": 0,
+        "retrieval": "vector+fts",
+        "score": 0.4191
+      }
+    ],
+    "important_quotes": [
+      {
+        "quote": "# AI RAG Lokal\n\nProyek ini memakai Magika sebagai file router, OpenDataLoader PDF sebagai parser PDF, FastEmbed sebagai embedder, dan Chroma sebagai vector database.\n\nPipeline utama adalah file masuk, deteksi tipe file, parsing, chunking, embedding, penyimpanan ke Chroma, retrieval, lalu jawaban dari model Qwen.\n\nMini Graph Layer digunakan untuk memetakan hubungan antara dokumen, chunk, parser, filetype, dan term penting.",
+        "source_name": "project-notes.md",
+        "chunk_index": 0,
+        "retrieval": "vector+fts",
+        "score": 0.4672
+      },
+      {
+        "quote": "RAG lokal adalah sistem retrieval augmented generation berbasis dokumen lokal.",
+        "source_name": "test-rag.txt",
+        "chunk_index": 0,
+        "retrieval": "vector+fts",
+        "score": 0.4191
+      }
+    ],
+    "uncertainty": [],
+    "llm_instruction": "Jawab hanya berdasarkan evidence pack ini. Jika evidence tidak cukup, nyatakan bahwa dokumen belum cukup mendukung jawaban."
+  },
+  "llm_provider": "ollama",
+  "llm_model": "qwen-rag-1.5b:latest",
+  "quality": {
+    "artifact_like": false,
+    "issue_tags": [],
+    "quality_score": 0.9283,
+    "quality_pass": true
+  },
+  "quality_id": 7
+}

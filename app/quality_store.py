@@ -49,6 +49,36 @@ class AnswerQualityStore:
         )
         """)
 
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS answer_verification_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            answer_quality_id INTEGER,
+            query TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            verifier_name TEXT NOT NULL,
+            supported INTEGER,
+            confidence REAL,
+            latency_ms REAL,
+            verdict_json TEXT NOT NULL,
+            metadata_json TEXT,
+            FOREIGN KEY(answer_quality_id) REFERENCES answer_quality(id)
+        )
+        """)
+
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS quality_promotions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            answer_quality_id INTEGER,
+            promoted_to TEXT NOT NULL,
+            promoted INTEGER NOT NULL,
+            reason TEXT,
+            metadata_json TEXT,
+            FOREIGN KEY(answer_quality_id) REFERENCES answer_quality(id)
+        )
+        """)
+
         self.conn.commit()
 
     def insert_answer_record(
@@ -91,6 +121,84 @@ class AnswerQualityStore:
             ),
         )
 
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def insert_verification_run(
+        self,
+        query: str,
+        answer: str,
+        verifier_name: str,
+        verdict: dict[str, Any],
+        answer_quality_id: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> int:
+        cur = self.conn.cursor()
+
+        supported = verdict.get("supported")
+        confidence = verdict.get("confidence")
+        latency_ms = verdict.get("latency_ms")
+
+        try:
+            confidence = None if confidence is None else float(confidence)
+        except (TypeError, ValueError):
+            confidence = None
+
+        try:
+            latency_ms = None if latency_ms is None else float(latency_ms)
+        except (TypeError, ValueError):
+            latency_ms = None
+
+        cur.execute(
+            """
+            INSERT INTO answer_verification_runs (
+                created_at, answer_quality_id, query, answer, verifier_name,
+                supported, confidence, latency_ms, verdict_json, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                datetime.now(timezone.utc).isoformat(),
+                answer_quality_id,
+                query,
+                answer,
+                verifier_name,
+                None if supported is None else (1 if bool(supported) else 0),
+                confidence,
+                latency_ms,
+                json.dumps(verdict, ensure_ascii=False),
+                json.dumps(metadata or {}, ensure_ascii=False),
+            ),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def log_promotion(
+        self,
+        promoted_to: str,
+        promoted: bool,
+        reason: str,
+        answer_quality_id: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> int:
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO quality_promotions (
+                created_at, answer_quality_id, promoted_to, promoted,
+                reason, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                datetime.now(timezone.utc).isoformat(),
+                answer_quality_id,
+                promoted_to,
+                1 if promoted else 0,
+                reason,
+                json.dumps(metadata or {}, ensure_ascii=False),
+            ),
+        )
         self.conn.commit()
         return int(cur.lastrowid)
 

@@ -13,6 +13,8 @@ from app.compression.context_compressor import ContextCompressor
 from app.prompt_builder import build_system_prompt, build_user_prompt
 from app.llm.clients import get_llm_client, LLMClientError
 from app.verification.verifier import EvidenceVerifier
+from app.verification.llm_judge import QwenJudgeVerifier
+from app.verification.combined_verifier import combine_verification_results
 from app.answer_postprocess import clean_answer
 from app.extractive_answer import build_extractive_answer
 from app.answer_quality import is_answer_artifact_like
@@ -39,6 +41,9 @@ def save_answer_record(record: dict) -> tuple[Path, Path]:
     with json_path.open("w", encoding="utf-8") as f:
         json.dump(record, f, indent=2, ensure_ascii=False)
 
+    local_verification = record["verification"].get("local", {})
+    llm_judge = record["verification"].get("llm_judge", {})
+
     lines = []
     lines.append(f"# Answer: {record['query']}")
     lines.append("")
@@ -48,8 +53,13 @@ def save_answer_record(record: dict) -> tuple[Path, Path]:
     lines.append("")
     lines.append("## Verifikasi")
     lines.append("")
-    lines.append(f"- Supported: {record['verification'].get('supported')}")
-    lines.append(f"- Support ratio: {record['verification'].get('support_ratio')}")
+    lines.append(f"- Final supported: {record['verification'].get('supported')}")
+    lines.append(f"- Verifier mode: {record['verification'].get('verifier_mode')}")
+    lines.append(f"- Local support ratio: {local_verification.get('support_ratio')}")
+    lines.append(f"- Qwen judge available: {llm_judge.get('available')}")
+    lines.append(f"- Qwen judge supported: {llm_judge.get('supported')}")
+    lines.append(f"- Qwen judge confidence: {llm_judge.get('confidence')}")
+    lines.append(f"- Fallback used: {record['verification'].get('fallback_used', False)}")
     lines.append("")
     lines.append("## Provider")
     lines.append("")
@@ -59,6 +69,36 @@ def save_answer_record(record: dict) -> tuple[Path, Path]:
     md_path.write_text("\n".join(lines), encoding="utf-8")
 
     return json_path, md_path
+
+
+def run_fallback_if_needed(
+    query: str,
+    answer: str,
+    evidence_pack: dict,
+    verifier: EvidenceVerifier,
+) -> tuple[str, dict]:
+    local_verification = verifier.verify_answer(answer, evidence_pack)
+    artifact_like = is_answer_artifact_like(answer, query)
+
+    if not settings.use_extractive_fallback:
+        return answer, local_verification
+
+    if local_verification.get("supported") and not artifact_like:
+        return answer, local_verification
+
+    fallback_answer = build_extractive_answer(evidence_pack)
+    fallback_answer = clean_answer(fallback_answer, evidence_pack=evidence_pack)
+    fallback_verification = verifier.verify_answer(fallback_answer, evidence_pack)
+
+    if fallback_verification.get("supported"):
+        fallback_verification = {
+            **fallback_verification,
+            "fallback_used": True,
+            "fallback_reason": "LLM answer unsupported or artifact-like. Extractive fallback selected.",
+        }
+        return fallback_answer, fallback_verification
+
+    return answer, local_verification
 
 
 def main() -> None:
@@ -100,22 +140,39 @@ def main() -> None:
         return
 
     verifier = EvidenceVerifier()
+    llm_judge = QwenJudgeVerifier()
+
     cleaned_answer = clean_answer(result.text, evidence_pack=evidence_pack)
-    verification = verifier.verify_answer(cleaned_answer, evidence_pack)
+    final_answer, local_verification = run_fallback_if_needed(
+        query=query,
+        answer=cleaned_answer,
+        evidence_pack=evidence_pack,
+        verifier=verifier,
+    )
+
+    llm_verification = llm_judge.verify_answer(
+        query=query,
+        answer=final_answer,
+        evidence_pack=evidence_pack,
+    )
+
+    verification = combine_verification_results(
+        local_verification=local_verification,
+        llm_verification=llm_verification,
+    )
 
     quality = evaluate_answer_quality(
         query=query,
-        answer=cleaned_answer,
+        answer=final_answer,
         verification=verification,
     )
 
-    fallback_used = bool(verification.get("fallback_used", False))
-
+    quality_id = None
     if settings.enable_quality_store:
         quality_store = AnswerQualityStore()
         quality_id = quality_store.insert_answer_record(
             query=query,
-            answer=cleaned_answer,
+            answer=final_answer,
             evidence_path=str(evidence_path),
             verification=verification,
             artifact_like=quality["artifact_like"],
@@ -124,31 +181,39 @@ def main() -> None:
             metadata={
                 "llm_provider": result.provider,
                 "llm_model": result.model,
+                "raw_answer_preview": result.text[:500],
+                "qwen_judge_enabled": settings.qwen_judge_enabled,
             },
         )
-    else:
-        quality_id = None
-        fallback_used = bool(verification.get("fallback_used", False))
 
-    artifact_like = is_answer_artifact_like(cleaned_answer, query)
-
-    if settings.use_extractive_fallback and (not verification.get("supported") or artifact_like):
-        fallback_answer = build_extractive_answer(evidence_pack)
-        fallback_answer = clean_answer(fallback_answer, evidence_pack=evidence_pack)
-        fallback_verification = verifier.verify_answer(fallback_answer, evidence_pack)
-
-        if fallback_verification.get("supported"):
-            cleaned_answer = fallback_answer
-            verification = {
-                **fallback_verification,
-                "fallback_used": True,
-                "fallback_reason": "LLM answer was unsupported or contained prompt artifacts.",
-            }
+        if settings.verification_audit_enabled:
+            quality_store.insert_verification_run(
+                query=query,
+                answer=final_answer,
+                verifier_name="local_keyword_verifier",
+                verdict=local_verification,
+                answer_quality_id=quality_id,
+                metadata={
+                    "stage": "final",
+                    "fallback_used": bool(local_verification.get("fallback_used", False)),
+                },
+            )
+            quality_store.insert_verification_run(
+                query=query,
+                answer=final_answer,
+                verifier_name="qwen_judge",
+                verdict=llm_verification,
+                answer_quality_id=quality_id,
+                metadata={
+                    "stage": "final",
+                    "enabled": settings.qwen_judge_enabled,
+                },
+            )
 
     record = {
         "query": query,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "answer": cleaned_answer,
+        "answer": final_answer,
         "raw_answer": result.text,
         "verification": verification,
         "evidence_path": str(evidence_path),
@@ -162,7 +227,7 @@ def main() -> None:
     json_path, md_path = save_answer_record(record)
 
     console.print("\n[bold green]Answer[/bold green]\n")
-    console.print(cleaned_answer)
+    console.print(final_answer)
 
     console.print("\n[bold]Verification[/bold]")
     console.print(verification)

@@ -25,7 +25,8 @@ def env_int(key: str, default: int) -> int:
         return int(value.strip())
     except ValueError as exc:
         raise ValueError(f"Environment variable {key} harus berupa integer. Nilai saat ini: {value}") from exc
-    
+
+
 def env_float(key: str, default: float) -> float:
     value = os.getenv(key)
     if value is None or value.strip() == "":
@@ -35,7 +36,8 @@ def env_float(key: str, default: float) -> float:
         return float(value.strip())
     except ValueError as exc:
         raise ValueError(f"Environment variable {key} harus berupa float. Nilai saat ini: {value}") from exc
-    
+
+
 def env_bool(key: str, default: bool) -> bool:
     value = os.getenv(key)
     if value is None or value.strip() == "":
@@ -115,6 +117,15 @@ class Settings:
     use_extractive_fallback: bool
     enable_quality_store: bool
     use_quality_examples: bool
+    verification_audit_enabled: bool
+
+    qwen_judge_enabled: bool
+    qwen_judge_base_url: str
+    qwen_judge_model: str
+    qwen_judge_api_key: str
+    qwen_judge_temperature: float
+    qwen_judge_max_tokens: int
+    qwen_judge_confidence_threshold: float
 
     def ensure_dirs(self) -> None:
         for path in [
@@ -209,6 +220,15 @@ settings = Settings(
     quality_db=env_path("RAG_QUALITY_DB", "data/quality/answer_quality.sqlite3"),
     enable_quality_store=env_bool("RAG_ENABLE_QUALITY_STORE", True),
     use_quality_examples=env_bool("RAG_USE_QUALITY_EXAMPLES", False),
+    verification_audit_enabled=env_bool("RAG_VERIFICATION_AUDIT_ENABLED", True),
+
+    qwen_judge_enabled=env_bool("RAG_QWEN_JUDGE_ENABLED", False),
+    qwen_judge_base_url=env_str("RAG_QWEN_JUDGE_BASE_URL", env_str("RAG_OPENAI_COMPAT_BASE_URL", "http://127.0.0.1:8080/v1")),
+    qwen_judge_model=env_str("RAG_QWEN_JUDGE_MODEL", "qwen2.5:4b-instruct"),
+    qwen_judge_api_key=env_str("RAG_QWEN_JUDGE_API_KEY", env_str("RAG_OPENAI_COMPAT_API_KEY", "local")),
+    qwen_judge_temperature=env_float("RAG_QWEN_JUDGE_TEMPERATURE", 0.0),
+    qwen_judge_max_tokens=env_int("RAG_QWEN_JUDGE_MAX_TOKENS", 600),
+    qwen_judge_confidence_threshold=env_float("RAG_QWEN_JUDGE_CONFIDENCE_THRESHOLD", 0.80),
 )
 
 if not settings.ollama_model:
@@ -225,5 +245,5 @@ if not settings.ollama_model:
             f"RAG_MODEL_MODE tidak dikenal: {settings.model_mode}. "
             "Gunakan: rag, coder, atau general."
         )
-    
+
 settings.ensure_dirs()
