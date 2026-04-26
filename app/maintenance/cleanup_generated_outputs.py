@@ -18,6 +18,9 @@ DEFAULT_PATTERNS = [
     "data/evidence/*.evidence.json",
     "data/quality/rag_regression_bench-*.json",
     "data/quality/model_smoke_bench-*.json",
+
+    # L2b web staging generated outputs
+    "data/web_staging/**/*",
 ]
 
 
