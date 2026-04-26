@@ -1,7 +1,4 @@
-from app.config import settings
+from app.maintenance.show_model_mode import main
 
-print("Model mode:", settings.model_mode)
-print("Selected Ollama model:", settings.ollama_model)
-print("RAG model:", settings.ollama_model_rag)
-print("Coder model:", settings.ollama_model_coder)
-print("General model:", settings.ollama_model_general)
+if __name__ == "__main__":
+    main()
