@@ -1,60 +1,42 @@
-# Changelog
+# CHANGELOG.md
 
-## v2.2 — Deterministic Calculator and Gemini API Foundation
+## v2.2.3 — Local RAG Quality Foundation sampai L3
+
+Tanggal update: 2026-04-26
 
 ### Added
 
-- Added deterministic `safe_calculator` tool for arithmetic queries.
-- Added `math_guard` routing before normal RAG retrieval.
-- Added calculator regression cases for multiplication and exponentiation.
-- Documented Gemini API usage through the existing OpenAI-compatible provider.
-- Documented NVIDIA NIM as a future OpenAI-compatible endpoint candidate.
+- Added `app/rag/chunking_v2.py`.
+- Added `app/benchmarks/chunking_v2_smoke.py`.
+- Added `app/parsers/html_parser.py`.
+- Added `app/benchmarks/html_parser_smoke.py`.
+- Added `app/staging/web_staging.py`.
+- Added `app/commands/parse_web_staging.py`.
+- Added `app/benchmarks/web_staging_smoke.py`.
+- Added `app/quality/quality_gate.py`.
+- Added `app/commands/run_quality_gate.py`.
+- Added `app/benchmarks/quality_gate_smoke.py`.
 
 ### Changed
 
-- Arithmetic-like queries are answered by a deterministic tool instead of raw LLM generation.
-- Calculator answers use:
-  - `verifier_mode=tool_only`
-  - `quality_score=1.0`
-  - `quality_pass=True`
-  - `tool_used=safe_calculator`
-- External API experimentation should use:
-  - `RAG_OPENAI_COMPAT_BASE_URL`
-  - `RAG_OPENAI_COMPAT_MODEL`
-  - `RAG_OPENAI_COMPAT_API_KEY`
+- Web data processing now follows staging-first direction:
+  ```text
+  raw_html → parsed_text + metadata → quality_gate → approved/quarantine
+  ```
+- Generated output cleanup now covers answer/evidence/benchmark/staging/audit outputs.
+- Development direction now prioritizes local RAG data quality before scraper agent and Kaggle import/export automation.
 
 ### Verified
 
-- Local Ollama baseline passes `rag_regression_bench` with `6/6`.
-- `17 * 23 = ?` returns `391`.
-- `2^8 = ?` returns `256`.
-- `2**8 = ?` returns `256`.
-- Raw model smoke benchmark remains intentionally stricter and keeps arithmetic as a known raw-LLM weakness.
+- `chunking_v2_smoke` passed.
+- `html_parser_smoke` passed.
+- `web_staging_smoke` passed.
+- `quality_gate_smoke` passed.
+- `rag_regression_bench` remains `6/6 passed` under local Ollama baseline.
 
-### Pending
+### Notes
 
-- Gemini API live test after model selection.
-- NVIDIA NIM endpoint test after corpus size and model choice are ready.
-- Provider benchmark across local Ollama, Gemini API, and NVIDIA NIM.
-- Quota-aware provider routing.
-
-## v2.1.1 — Local RAG Benchmark and Hybrid Qwen Judge Baseline
-
-### Added
-
-- Added local model smoke benchmark.
-- Added RAG regression benchmark.
-- Added safe abstention handling in answer quality evaluation.
-- Documented Qwen judge hybrid verification through an OpenAI-compatible local endpoint.
-
-### Verified
-
-- `qwen3:4b-instruct` is available and valid as the `general` local model.
-- Positive RAG evidence case passed.
-- False-premise correction passed.
-- Out-of-scope abstention passed.
-- Hybrid Qwen judge integration worked with confidence-bearing audit records.
-
-### Known Limitation
-
-- Raw LLM arithmetic remained unreliable and required deterministic tooling, addressed in v2.2.
+- L1 does not yet write JSONL directly.
+- L2 does not yet ingest HTML into Chroma.
+- L3 does not yet promote data into Chroma.
+- L4 should create JSONL export for `rag-to-kaggle`.
