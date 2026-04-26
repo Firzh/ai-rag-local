@@ -11,3 +11,4 @@
 data/quality/*.sqlite3
 data/quality/rag_regression_bench-*.json
 data/quality/model_smoke_bench-*.jsondata/web_staging/
+data/audits/
