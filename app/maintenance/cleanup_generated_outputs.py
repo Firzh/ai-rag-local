@@ -20,6 +20,7 @@ DEFAULT_PATTERNS = [
     "data/quality/model_smoke_bench-*.json",
     "data/web_staging/**/*",
     "data/audits/*.csv",
+    "outputs/*.jsonl",
 ]
 
 

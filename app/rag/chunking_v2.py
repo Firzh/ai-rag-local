@@ -141,8 +141,32 @@ def _apply_overlap(previous_text: str, overlap_chars: int) -> str:
     if not previous_text:
         return ""
 
-    return previous_text[-overlap_chars:].strip()
+    overlap = previous_text[-overlap_chars:].strip()
 
+    # Hindari overlap dimulai dari tengah kata.
+    first_space = overlap.find(" ")
+    if first_space > 0:
+        overlap = overlap[first_space + 1 :].strip()
+
+    if len(overlap) < 10:
+        return ""
+
+    return overlap
+
+def _find_safe_window_end(text: str, start: int, target_chars: int) -> int:
+    hard_end = min(start + target_chars, len(text))
+
+    if hard_end >= len(text):
+        return len(text)
+
+    # Jangan potong terlalu awal. Cari spasi terakhir di paruh kedua window.
+    search_start = min(len(text), start + max(1, target_chars // 2))
+    candidate = text.rfind(" ", search_start, hard_end)
+
+    if candidate > start:
+        return candidate
+
+    return hard_end
 
 def chunk_sections(
     sections: list[Section],
@@ -151,6 +175,13 @@ def chunk_sections(
 ) -> list[Chunk]:
     if target_chars <= 100:
         raise ValueError("target_chars terlalu kecil. Gunakan minimal > 100.")
+
+    if overlap_chars < 0:
+        overlap_chars = 0
+
+    # Overlap tidak boleh terlalu besar, karena bisa membuat window tidak maju.
+    if overlap_chars >= target_chars:
+        overlap_chars = max(0, target_chars // 4)
 
     chunks: list[Chunk] = []
     chunk_index = 0
@@ -162,30 +193,37 @@ def chunk_sections(
         previous_chunk_text = ""
 
         for paragraph in paragraphs:
+            paragraph = paragraph.strip()
             paragraph_len = len(paragraph)
 
-            # Paragraf sangat panjang dipecah secara konservatif.
+            if not paragraph:
+                continue
+
+            # Jika paragraf sangat panjang, pecah dengan sliding window aman.
             if paragraph_len > target_chars:
                 if buffer:
                     chunk_text = "\n\n".join(buffer).strip()
-                    chunks.append(
-                        Chunk(
-                            text=chunk_text,
-                            metadata={
-                                "chunk_index": chunk_index,
-                                "section_title": section.title,
-                                "section_index": section.index,
-                            },
+                    if chunk_text:
+                        chunks.append(
+                            Chunk(
+                                text=chunk_text,
+                                metadata={
+                                    "chunk_index": chunk_index,
+                                    "section_title": section.title,
+                                    "section_index": section.index,
+                                },
+                            )
                         )
-                    )
-                    chunk_index += 1
-                    previous_chunk_text = chunk_text
+                        chunk_index += 1
+                        previous_chunk_text = chunk_text
+
                     buffer = []
                     buffer_len = 0
 
                 start = 0
+
                 while start < paragraph_len:
-                    end = min(start + target_chars, paragraph_len)
+                    end = _find_safe_window_end(paragraph, start, target_chars)
                     part = paragraph[start:end].strip()
 
                     if part:
@@ -209,9 +247,17 @@ def chunk_sections(
                         chunk_index += 1
                         previous_chunk_text = chunk_text
 
-                    start = end - overlap_chars if overlap_chars > 0 else end
-                    if start <= 0 or start >= paragraph_len:
+                    # Penting: kalau sudah sampai akhir paragraf, keluar.
+                    if end >= paragraph_len:
                         break
+
+                    next_start = end - overlap_chars if overlap_chars > 0 else end
+
+                    # Safety guard: pastikan window selalu maju.
+                    if next_start <= start:
+                        next_start = end
+
+                    start = next_start
 
                 continue
 
@@ -219,28 +265,31 @@ def chunk_sections(
 
             if buffer and next_len > target_chars:
                 chunk_text = "\n\n".join(buffer).strip()
-                chunks.append(
-                    Chunk(
-                        text=chunk_text,
-                        metadata={
-                            "chunk_index": chunk_index,
-                            "section_title": section.title,
-                            "section_index": section.index,
-                        },
+
+                if chunk_text:
+                    chunks.append(
+                        Chunk(
+                            text=chunk_text,
+                            metadata={
+                                "chunk_index": chunk_index,
+                                "section_title": section.title,
+                                "section_index": section.index,
+                            },
+                        )
                     )
-                )
-                chunk_index += 1
-                previous_chunk_text = chunk_text
+                    chunk_index += 1
+                    previous_chunk_text = chunk_text
 
                 overlap_text = _apply_overlap(previous_chunk_text, overlap_chars)
                 buffer = [overlap_text, paragraph] if overlap_text else [paragraph]
                 buffer_len = sum(len(x) for x in buffer)
             else:
                 buffer.append(paragraph)
-                buffer_len = next_len
+                buffer_len = sum(len(x) for x in buffer) + max(0, len(buffer) - 1) * 2
 
         if buffer:
             chunk_text = "\n\n".join([x for x in buffer if x.strip()]).strip()
+
             if chunk_text:
                 chunks.append(
                     Chunk(
@@ -255,7 +304,6 @@ def chunk_sections(
                 chunk_index += 1
 
     return chunks
-
 
 def enrich_chunk_metadata(
     chunk: Chunk,

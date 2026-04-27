@@ -301,3 +301,116 @@ Expected:
 semua smoke passed
 rag_regression_bench SUMMARY: 6/6 passed
 ```
+
+---
+
+## v2.2.3 L4a Follow-up — Chunking V2 Boundary Refinement Backlog
+
+Status: backlog teknis setelah L4a JSONL export.
+
+### Latar belakang
+
+L4a `export_l1_chunks` sudah menghasilkan JSONL yang kompatibel untuk alur `rag-lc -> rag-to-kaggle`. Smoke test sudah lulus, anti-loop test sudah aman, dan regression benchmark tetap lulus. Namun hasil inspeksi JSONL menunjukkan masih ada isu kualitas chunk yang perlu diperbaiki sebelum data dipakai untuk audit retrieval skala lebih besar di Kaggle.
+
+Temuan utama:
+
+1. Beberapa chunk masih dapat dimulai dari potongan kata atau potongan frasa, misalnya `"Gate RAG Lokal"` alih-alih `"Quality Gate RAG Lokal"`.
+2. Overlap masih dapat menghasilkan duplikasi yang terasa kasar, misalnya frasa `"Kaggle digunakan sebagai lab"` muncul sebagai overlap sebelum teks lanjutan.
+3. Chunking sudah tidak infinite loop, tetapi boundary semantik belum ideal.
+
+Catatan: isu ini tidak memblokir L4a karena exporter sudah menjalankan fungsi inti: menyaring chunk terlalu pendek, menormalisasi `chunk_index`, menyimpan `original_chunk_index`, dan menghasilkan JSONL dengan `doc_id`, `text`, serta metadata chunking. Refinement ini ditunda agar L4a tetap kecil dan mudah diuji.
+
+### Tujuan refinement
+
+Meningkatkan kualitas chunk sebelum export ke Kaggle tanpa mengubah kontrak JSONL.
+
+Target:
+
+- Chunk tidak dimulai dari tengah kata.
+- Chunk tidak berakhir di tengah kata jika masih ada batas aman.
+- Overlap tidak menyebabkan pengulangan frasa yang terlalu terlihat.
+- Title-only chunk tidak diekspor sebagai chunk mandiri.
+- Heading tetap dipertahankan sebagai metadata, bukan selalu sebagai chunk teks terpisah.
+- Anti-loop guard tetap aman.
+
+### Rencana teknis
+
+#### 1. Safe boundary split
+
+Tambahkan fungsi boundary yang lebih sadar kata dan kalimat:
+
+- `_find_safe_window_end()`
+- `_find_safe_window_start()`
+- `_find_sentence_boundary()`
+
+Urutan prioritas boundary:
+
+1. Paragraf
+2. Kalimat
+3. Spasi antar kata
+4. Hard character boundary sebagai fallback terakhir
+
+#### 2. Overlap refinement
+
+Overlap perlu dibuat lebih bersih:
+
+- Hindari overlap yang dimulai dari tengah kata.
+- Hindari overlap yang hanya berupa potongan frasa pendek.
+- Hindari duplikasi penuh antara akhir chunk sebelumnya dan awal chunk berikutnya.
+- Simpan overlap secukupnya untuk konteks, bukan mengulang terlalu agresif.
+
+#### 3. Short chunk handling
+
+Chunk pendek perlu diperlakukan sebagai berikut:
+
+- Jika chunk pendek hanya heading/title, jangan diekspor sebagai chunk mandiri.
+- Jika memungkinkan, gabungkan heading pendek dengan paragraf berikutnya.
+- Exporter tetap memiliki `min_chunk_chars` sebagai safety layer.
+
+#### 4. Metadata tetap kompatibel
+
+Kontrak JSONL tidak berubah.
+
+Field yang harus tetap ada:
+
+- `doc_id`
+- `text`
+- `title`
+- `source`
+- `source_type`
+- `parser`
+- `page`
+- `chunk_index`
+- `metadata.section_title`
+- `metadata.section_index`
+- `metadata.heading_path`
+- `metadata.document_hash`
+- `metadata.chunk_hash`
+- `metadata.chunker = chunking_v2`
+- `metadata.chunking_version = chunking_v2`
+- `metadata.original_chunk_index`
+
+### Acceptance criteria
+
+Refinement dianggap selesai jika:
+
+- `python -m app.benchmarks.l1_jsonl_export_smoke` lulus.
+- Anti-loop test tetap lulus.
+- `python -m app.rag_regression_bench` tetap 6/6 passed.
+- Export JSONL tidak membawa title-only chunk.
+- Exported `chunk_index` berurutan mulai dari 0.
+- `metadata.original_chunk_index` tetap tersimpan.
+- Tidak ada chunk yang jelas dimulai dari tengah kata pada smoke sample.
+- Tidak ada overlap yang menduplikasi frasa secara kasar pada smoke sample.
+
+### Posisi roadmap
+
+Refinement ini tidak wajib sebelum L4a commit. Masukkan sebagai pekerjaan lanjutan sebelum atau bersamaan dengan L4b/L5 jika hasil compare retrieval menunjukkan dampak negatif dari boundary chunk yang kasar.
+
+Rekomendasi urutan:
+
+1. L4a — Export approved staged docs to JSONL.
+2. L4a.1 — Chunking boundary refinement.
+3. L4b — Export existing Chroma collection for Kaggle audit.
+4. L5 — Compare old Chroma vs sandbox/new corpus.
+
