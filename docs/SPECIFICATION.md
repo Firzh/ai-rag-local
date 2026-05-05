@@ -1,7 +1,7 @@
 # SPECIFICATION.md
 
-Status: **updated sampai v2.2.3 L3**  
-Tanggal update: 2026-04-26
+Status: **updated sampai L4 + post-L4 pipeline contract tests**
+Tanggal update: 2026-05-06
 
 ---
 
@@ -34,7 +34,9 @@ Gemini API dipakai melalui `openai_compatible`. Ollama tetap menjadi fallback lo
 
 ## 2. Deterministic calculator
 
-Arithmetic query ditangani oleh deterministic calculator tool, bukan raw LLM. Output calculator memakai:
+Arithmetic query ditangani oleh deterministic calculator tool, bukan raw LLM.
+
+Output calculator memakai:
 
 ```text
 tool_used = safe_calculator
@@ -101,7 +103,7 @@ chunk_text_v2(
     text: str,
     chunk_size: int = 900,
     overlap: int = 120,
-    base_metadata: dict | None = None
+    base_metadata: dict | None = None,
 ) -> list[Chunk]
 ```
 
@@ -218,9 +220,108 @@ data/web_staging/quarantine/
 data/audits/quality_gate_report.csv
 ```
 
+Post-L4 contract:
+
+- Jika `copy_outputs=True`, folder `approved` dan `quarantine` wajib dibuat walaupun salah satunya kosong.
+- Dokumen quarantine tidak boleh diekspor ke JSONL.
+- Report tetap dibuat untuk audit.
+
 ---
 
-## 9. Kaggle bridge contract
+## 9. L1 JSONL export
+
+Modul:
+
+```text
+app/exporters/l1_jsonl_export.py
+```
+
+Command:
+
+```bash
+python -m app.commands.export_l1_chunks \
+  --input data/web_staging/approved \
+  --output outputs/l1_chunks.jsonl
+```
+
+Tujuan:
+
+- membaca `.txt` dan `.metadata.json` dari folder approved;
+- menjalankan chunking v2;
+- menulis satu baris JSON per chunk;
+- menjaga `doc_id`, `text`, `chunk_index`, source metadata, dan chunk metadata.
+
+---
+
+## 10. Chroma collection JSONL export
+
+Modul:
+
+```text
+app/exporters/chroma_jsonl_export.py
+```
+
+Command:
+
+```bash
+python -m app.commands.export_chroma_collection \
+  --collection rag_local \
+  --output outputs/chroma_collection_export.jsonl
+```
+
+Tujuan:
+
+- mengekspor collection Chroma existing ke JSONL;
+- menyediakan bahan audit dan compare;
+- tidak menulis balik ke Chroma utama;
+- tidak menjalankan promote otomatis.
+
+Smoke test:
+
+```bash
+python -m app.benchmarks.chroma_jsonl_export_smoke
+```
+
+---
+
+## 11. JSONL importer contract
+
+Modul:
+
+```text
+app/importers/jsonl_collection_importer.py
+```
+
+Kontrak input wajib:
+
+```text
+text
+metadata
+```
+
+ID record boleh memakai salah satu:
+
+```text
+document_id
+doc_id
+```
+
+Resolusi ID:
+
+1. Pakai `document_id` jika tersedia.
+2. Jika tidak ada, pakai `doc_id:chunk_index` jika `chunk_index` tersedia.
+3. Jika tidak ada, pakai `doc_id:chunk_hash` jika metadata menyediakan `chunk_hash`.
+4. Pakai `doc_id` saja sebagai fallback terakhir.
+
+Alasan:
+
+- `doc_id` mewakili dokumen.
+- Satu dokumen bisa menghasilkan banyak chunk.
+- Chroma membutuhkan ID unik per record.
+
+---
+
+## 12. Kaggle bridge contract
 
 Format pertukaran data ke `rag-to-kaggle` menggunakan JSONL, satu baris per chunk.
 
@@ -240,8 +341,8 @@ Disarankan:
   "doc_id": "...",
   "title": "...",
   "source": "...",
-  "source_type": "web|local_file",
-  "parser": "html_parser_v1|pdf_parser|text_parser",
+  "source_type": "web|local_file|chroma",
+  "parser": "html_parser_v1|pdf_parser|text_parser|chroma_export",
   "page": null,
   "chunk_index": 0,
   "text": "...",
@@ -253,14 +354,46 @@ Disarankan:
     "token_estimate": 210,
     "document_hash": "...",
     "chunk_hash": "...",
-    "chunker": "chunking_v2"
+    "chunker": "chunking_v2",
+    "approval_status": "approved",
+    "quality_gate_status": "approved"
   }
 }
 ```
 
 ---
 
-## 10. Generated outputs
+## 13. Post-L4 contract tests
+
+Files:
+
+```text
+tests/conftest.py
+tests/test_pipeline_contract.py
+```
+
+Cakupan:
+
+- compile check untuk file Python di `app/`;
+- web pipeline contract dari raw HTML sampai L1 JSONL;
+- quarantine contract agar dokumen secret tidak masuk export;
+- importer compatibility contract untuk `doc_id` alias `document_id`.
+
+Command:
+
+```bash
+python -m pytest -q tests/test_pipeline_contract.py
+```
+
+Expected:
+
+```text
+4 passed
+```
+
+---
+
+## 14. Generated outputs
 
 Generated runtime outputs tidak boleh ikut commit:
 
@@ -271,6 +404,7 @@ data/web_staging/
 data/audits/
 data/quality/*.json
 data/quality/*.sqlite3
+outputs/
 ```
 
 Gunakan:

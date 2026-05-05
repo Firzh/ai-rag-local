@@ -1,9 +1,9 @@
 # ai-rag-local / rag-lc
 
-Status update: **v2.2.3 Local RAG Quality Foundation sampai L3**  
-Tanggal update: 2026-04-26
+Status update: L4 JSONL export foundation + post-L4 pipeline contract tests
+Tanggal update: 2026-05-06
 
-Repository ini diarahkan sebagai RAG lokal utama. Prinsip pengembangan saat ini adalah memperkuat kualitas data lokal sebelum integrasi yang lebih dalam dengan pipeline Kaggle dan mini data acquisition agent.
+Repository ini diarahkan sebagai RAG lokal utama. Prinsip pengembangan saat ini adalah memperkuat kualitas data lokal, menjaga Chroma utama tetap aman, dan memakai JSONL sebagai jembatan audit menuju `rag-to-kaggle` atau sandbox lokal.
 
 ## Status ringkas
 
@@ -18,8 +18,10 @@ Repository ini diarahkan sebagai RAG lokal utama. Prinsip pengembangan saat ini 
 | L2a HTML parser foundation | Selesai |
 | L2b HTML staging pipeline | Selesai |
 | L3 Quality gate untuk staged web data | Selesai |
-| L4 Export JSONL / Chroma export untuk Kaggle | Selesai fondasi export JSONL dan smoke test |
-| L5 Chroma compare lama vs sandbox | Belum mulai |
+| L4a Approved staged docs to L1 JSONL | Selesai |
+| L4b Chroma collection JSONL export | Selesai sebagai fondasi audit |
+| Post-L4 pipeline contract tests | Selesai, `4 passed` |
+| L5 Chroma compare lama vs sandbox | Berikutnya |
 | L6 Collection promote | Ditahan sampai benchmark lama-vs-baru aman |
 
 ## Prinsip arsitektur saat ini
@@ -34,10 +36,60 @@ raw_html
 → parsed_text + metadata
 → quality_gate
 → approved / quarantine
-→ export / sandbox
+→ L1 JSONL export
+→ sandbox import / Kaggle audit
 → benchmark
 → promote jika aman
 ```
+
+Export Chroma lama juga tersedia untuk audit, tetapi bukan jalur promosi otomatis:
+
+```text
+Chroma existing collection
+→ Chroma JSONL export
+→ audit / compare
+→ sandbox benchmark
+```
+
+## Kontrak JSONL
+
+Kontrak minimal untuk pertukaran data adalah satu baris JSON per chunk.
+
+```json
+{
+  "doc_id": "dokumen_001",
+  "text": "Isi chunk"
+}
+```
+
+Kontrak yang disarankan:
+
+```json
+{
+  "doc_id": "dokumen_001",
+  "title": "Judul Dokumen",
+  "source": "file_asal.pdf atau URL",
+  "source_type": "web|local_file|chroma",
+  "parser": "html_parser_v1|pdf_parser|text_parser|chroma_export",
+  "page": null,
+  "chunk_index": 0,
+  "text": "Isi chunk",
+  "metadata": {
+    "section_title": "Pendahuluan",
+    "section_index": 0,
+    "heading_path": "Pendahuluan",
+    "char_count": 850,
+    "token_estimate": 210,
+    "document_hash": "sha256...",
+    "chunk_hash": "sha256...",
+    "chunker": "chunking_v2",
+    "approval_status": "approved",
+    "quality_gate_status": "approved"
+  }
+}
+```
+
+Importer JSONL sekarang menerima `document_id` atau `doc_id`. Jika hanya ada `doc_id`, importer membuat ID unik per chunk memakai pola `doc_id:chunk_index` jika `chunk_index` tersedia.
 
 ## Perintah penting
 
@@ -59,7 +111,20 @@ python -m app.benchmarks.chunking_v2_smoke
 python -m app.benchmarks.html_parser_smoke
 python -m app.benchmarks.web_staging_smoke
 python -m app.benchmarks.quality_gate_smoke
+python -m app.benchmarks.l1_jsonl_export_smoke
 python -m app.benchmarks.chroma_jsonl_export_smoke
+```
+
+Post-L4 contract tests:
+
+```bash
+python -m pytest -q tests/test_pipeline_contract.py
+```
+
+Expected:
+
+```text
+4 passed
 ```
 
 Cleanup generated outputs:
@@ -70,18 +135,4 @@ python -m app.maintenance.cleanup_generated_outputs --yes
 
 ## Catatan
 
-Jika ingin melanjutkan ke Kaggle, jangan kirim Chroma utama secara langsung. Gunakan export JSONL dan import balik ke collection sandbox lokal terlebih dahulu.
-
-## L4 Chroma JSONL Export
-
-Export collection Chroma utama ke JSONL:
-
-```bash
-python -m app.commands.export_chroma_collection --output data/exports/chroma_collection.jsonl
-```
-
-Export dengan vector embedding:
-
-```bash
-python -m app.commands.export_chroma_collection --output data/exports/chroma_collection_with_embeddings.jsonl --include-embeddings
-```
+Jangan kirim Chroma utama langsung ke pipeline eksperimen. Gunakan JSONL dan sandbox lokal terlebih dahulu. Promote ke Chroma utama hanya boleh dilakukan setelah compare lama-vs-baru dan regression menunjukkan hasil aman.
