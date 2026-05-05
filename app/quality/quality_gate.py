@@ -308,7 +308,21 @@ def run_quality_gate(
     if not input_dir.exists():
         raise FileNotFoundError(f"Input dir tidak ditemukan: {input_dir}")
 
+    if not input_dir.is_dir():
+        raise NotADirectoryError(f"Input path bukan folder: {input_dir}")
+
+    # Pastikan folder laporan selalu tersedia.
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Contract penting:
+    # Jika copy_outputs=True, quality gate wajib menjamin folder output tersedia,
+    # walaupun semua dokumen masuk quarantine atau tidak ada dokumen approved.
+    if copy_outputs:
+        approved_dir.mkdir(parents=True, exist_ok=True)
+        quarantine_dir.mkdir(parents=True, exist_ok=True)
+
     text_files = sorted(input_dir.glob("*.txt"))
+
     results = [
         evaluate_text_file(
             path,

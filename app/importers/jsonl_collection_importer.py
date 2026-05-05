@@ -99,18 +99,59 @@ def validate_record(record: dict[str, Any], line_no: int) -> None:
     if not isinstance(metadata, dict):
         raise ValueError(f"Record #{line_no} metadata harus object")
 
+def resolve_document_id(record: dict) -> str:
+    """
+    Resolve ID record untuk Chroma.
 
-def validate_records(records: list[dict[str, Any]]) -> None:
-    seen: set[str] = set()
+    Prioritas:
+    1. document_id jika tersedia
+    2. doc_id + chunk_index jika tersedia
+    3. doc_id + chunk_hash jika tersedia
+    4. doc_id saja sebagai fallback terakhir
+    """
 
-    for index, record in enumerate(records, 1):
-        validate_record(record, index)
-        document_id = record["document_id"]
+    document_id = record.get("document_id")
 
-        if document_id in seen:
-            raise ValueError(f"Duplicate document_id ditemukan: {document_id}")
+    if document_id:
+        return str(document_id)
 
-        seen.add(document_id)
+    doc_id = record.get("doc_id")
+
+    if not doc_id:
+        raise ValueError("Record wajib memiliki document_id atau doc_id.")
+
+    chunk_index = record.get("chunk_index")
+
+    if chunk_index is not None:
+        return f"{doc_id}:{chunk_index}"
+
+    metadata = record.get("metadata") or {}
+    chunk_hash = metadata.get("chunk_hash")
+
+    if chunk_hash:
+        return f"{doc_id}:{chunk_hash}"
+
+    return str(doc_id)
+
+def validate_records(records: list[dict]) -> None:
+    if not records:
+        raise ValueError("JSONL kosong. Tidak ada record untuk diimpor.")
+
+    for index, record in enumerate(records):
+        if not isinstance(record, dict):
+            raise ValueError(f"Record index {index} bukan object/dict.")
+
+        if not record.get("text"):
+            raise ValueError(f"Record index {index} tidak memiliki field text.")
+
+        if "metadata" not in record:
+            raise ValueError(f"Record index {index} tidak memiliki field metadata.")
+
+        if not isinstance(record["metadata"], dict):
+            raise ValueError(f"Record index {index} field metadata harus berupa object/dict.")
+
+        # Menerima document_id atau doc_id
+        resolve_document_id(record)
 
 
 def list_collections(client: chromadb.PersistentClient) -> list[str]:
@@ -168,9 +209,9 @@ def build_chroma_payload(
             "imported_at": imported_at,
         }
 
-        ids.append(record["document_id"])
         documents.append(record["text"])
-        metadatas.append(sanitize_metadata(metadata))
+        metadatas.append(record["metadata"])
+        ids.append(resolve_document_id(record))
 
     return ids, documents, metadatas
 
