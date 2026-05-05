@@ -10,6 +10,11 @@
 
 data/quality/*.sqlite3
 data/quality/rag_regression_bench-*.json
-data/quality/model_smoke_bench-*.jsondata/web_staging/
+data/quality/model_smoke_bench-*.json
+data/web_staging/
 data/audits/
 outputs/
+data/answers/*.json
+data/answers/*.md
+data/exports/
+data/tmp/

@@ -18,7 +18,7 @@ Repository ini diarahkan sebagai RAG lokal utama. Prinsip pengembangan saat ini 
 | L2a HTML parser foundation | Selesai |
 | L2b HTML staging pipeline | Selesai |
 | L3 Quality gate untuk staged web data | Selesai |
-| L4 Export JSONL / Chroma export untuk Kaggle | Belum mulai |
+| L4 Export JSONL / Chroma export untuk Kaggle | Selesai fondasi export JSONL dan smoke test |
 | L5 Chroma compare lama vs sandbox | Belum mulai |
 | L6 Collection promote | Ditahan sampai benchmark lama-vs-baru aman |
 
@@ -59,6 +59,7 @@ python -m app.benchmarks.chunking_v2_smoke
 python -m app.benchmarks.html_parser_smoke
 python -m app.benchmarks.web_staging_smoke
 python -m app.benchmarks.quality_gate_smoke
+python -m app.benchmarks.chroma_jsonl_export_smoke
 ```
 
 Cleanup generated outputs:
@@ -70,3 +71,17 @@ python -m app.maintenance.cleanup_generated_outputs --yes
 ## Catatan
 
 Jika ingin melanjutkan ke Kaggle, jangan kirim Chroma utama secara langsung. Gunakan export JSONL dan import balik ke collection sandbox lokal terlebih dahulu.
+
+## L4 Chroma JSONL Export
+
+Export collection Chroma utama ke JSONL:
+
+```bash
+python -m app.commands.export_chroma_collection --output data/exports/chroma_collection.jsonl
+```
+
+Export dengan vector embedding:
+
+```bash
+python -m app.commands.export_chroma_collection --output data/exports/chroma_collection_with_embeddings.jsonl --include-embeddings
+```
