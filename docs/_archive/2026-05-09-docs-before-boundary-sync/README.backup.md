@@ -7,40 +7,22 @@ Repository ini diarahkan sebagai RAG lokal utama. Prinsip pengembangan saat ini 
 
 ## Status ringkas
 
-| Area                                  | Status                                     |
-| ------------------------------------- | ------------------------------------------ |
-| Calculator deterministic              | Selesai pada v2.2                          |
-| Gemini via OpenAI-compatible provider | Selesai sebagai fondasi API eksternal      |
-| API error handling + Ollama fallback  | Selesai pada v2.2.1                        |
-| API usage tracker + query cache       | Selesai pada v2.2.2                        |
-| Reorganisasi struktur `app/`          | Selesai                                    |
-| L1 Chunking V2 foundation             | Selesai                                    |
-| L2a HTML parser foundation            | Selesai                                    |
-| L2b HTML staging pipeline             | Selesai                                    |
-| L3 Quality gate untuk staged web data | Selesai                                    |
-| L4a Approved staged docs to L1 JSONL  | Selesai                                    |
-| L4b Chroma collection JSONL export    | Selesai sebagai fondasi audit              |
-| Post-L4 pipeline contract tests       | Selesai, `4 passed`                        |
-| L5 Chroma compare lama vs sandbox     | Berikutnya                                 |
-| L6 Collection promote                 | Ditahan sampai benchmark lama-vs-baru aman |
-
-## Dokumentasi pengembangan
-
-Dokumentasi detail dipisahkan dari README agar status implementasi, batas scope, dan rencana pengembangan tidak tercampur dengan panduan cepat.
-
-| Dokumen                           | Fungsi                                                                         |
-| --------------------------------- | ------------------------------------------------------------------------------ |
-| `docs/DOCS_INDEX.md`              | Peta seluruh dokumentasi teknis repo                                           |
-| `docs/IMPLEMENTATION_STATUS.md`   | Status fitur yang sudah selesai, pending, dan belum boleh dianggap tersedia    |
-| `docs/DEVELOPMENT_PLAN.md`        | Rencana implementasi bertahap setelah L4 export foundation                     |
-| `docs/RAG_BOUNDARY.md`            | Batas scope `ai-rag-local` sebagai RAG lokal utama                             |
-| `docs/KAGGLE_HANDOFF_CONTRACT.md` | Kontrak export/import dengan `rag-to-kaggle`                                   |
-| `docs/SANDBOX_COMPARE_SCOPE.md`   | Scope L5 old Chroma vs sandbox compare                                         |
-| `docs/RUNTIME_GUARDS.md`          | Parser Guard, Identity Guard, Graph Guard, Compressor Guard, dan Evidence Gate |
-| `docs/TEST_PLAN.md`               | Smoke test, regression, boundary test, dan promotion test                      |
-| `docs/DOCS_MAINTENANCE_POLICY.md` | Kebijakan update dokumentasi, termasuk aturan 9+1 commit                       |
-
-Catatan maintenance: setiap 9 commit implementasi, commit ke-10 wajib dipakai untuk update dokumentasi. Perubahan kontrak data, boundary, atau safety gate tetap wajib didokumentasikan segera walaupun belum mencapai commit ke-10.
+| Area | Status |
+|---|---|
+| Calculator deterministic | Selesai pada v2.2 |
+| Gemini via OpenAI-compatible provider | Selesai sebagai fondasi API eksternal |
+| API error handling + Ollama fallback | Selesai pada v2.2.1 |
+| API usage tracker + query cache | Selesai pada v2.2.2 |
+| Reorganisasi struktur `app/` | Selesai |
+| L1 Chunking V2 foundation | Selesai |
+| L2a HTML parser foundation | Selesai |
+| L2b HTML staging pipeline | Selesai |
+| L3 Quality gate untuk staged web data | Selesai |
+| L4a Approved staged docs to L1 JSONL | Selesai |
+| L4b Chroma collection JSONL export | Selesai sebagai fondasi audit |
+| Post-L4 pipeline contract tests | Selesai, `4 passed` |
+| L5 Chroma compare lama vs sandbox | Berikutnya |
+| L6 Collection promote | Ditahan sampai benchmark lama-vs-baru aman |
 
 ## Prinsip arsitektur saat ini
 
