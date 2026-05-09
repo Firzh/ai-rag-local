@@ -1,379 +1,215 @@
-# DEVELOPMENT_PLAN.md
+# DEVELOPMENT_PLAN.md — ai-rag-local
 
-Status: **updated sampai L4 + post-L4 pipeline contract tests**
-Tanggal update: 2026-05-06
+Tanggal update: 2026-05-09
 Target repo: `Firzh/ai-rag-local` / `rag-lc`
-Relasi project: `rag-to-kaggle` sebagai lab eksperimen data dan evaluasi
-
----
+Relasi project: `rag-to-kaggle` sebagai pipeline eksperimen/evaluator
 
 ## 1. Arah pengembangan
 
-Arah pengembangan saat ini bukan lagi sekadar memperbanyak provider LLM. Fokus utama adalah memperkuat kualitas data lokal, menstabilkan kontrak JSONL, dan memastikan setiap tahap pipeline bisa diuji sebagai rangkaian script yang saling terhubung.
+Arah pengembangan `ai-rag-local` bukan memperluas eksperimen tanpa batas, tetapi memperkuat RAG lokal dengan guard yang jelas. Repo ini harus tetap menjadi pemilik ingestion lokal, parser, quality gate, retrieval, graph, compressor, evidence pack, regression lokal, sandbox compare lokal, dan promote guard.
 
-Prinsip utama:
+`rag-to-kaggle` hanya menjadi pipeline eksternal untuk audit, eksperimen, dan evaluasi. Output dari `rag-to-kaggle` kembali sebagai report/risk label/recommended params, bukan sebagai Chroma production siap pakai.
 
-1. `rag-lc` adalah sistem utama.
-2. Kaggle dipakai sebagai lab eksperimen, bukan runtime produksi.
-3. Data web tidak boleh langsung masuk Chroma utama.
-4. Parser, chunking, metadata, quality gate, export, import, dan benchmark harus punya kontrak yang jelas.
-5. Setiap perubahan harus punya smoke test, contract test, atau regression check yang sesuai.
-6. Promote ke Chroma utama ditahan sampai compare lama-vs-sandbox aman.
+## 2. Prinsip prioritas
 
----
+1. Jangan ubah Chroma utama sebelum L5 compare dan L6 promote guard selesai.
+2. Jangan jadikan Kaggle sebagai backend produksi.
+3. Jangan jadikan geometry audit atau GAC sebagai replacement Chroma utama.
+4. Jangan biarkan graph dan compressor memperbesar noise dari parser yang lemah.
+5. Setiap implementasi harus punya test atau minimal smoke test.
+6. Setiap 9 commit implementasi, commit ke-10 wajib dokumentasi.
 
-## 2. Progress sampai saat ini
+## 3. Roadmap prioritas
 
-### v2.2 - Calculator dan Gemini API foundation
+### P0 — Dokumentasi dan boundary sync
 
-Selesai:
+Status: prioritas pertama.
 
-- `safe_calculator` untuk arithmetic query.
-- `math_guard` sebelum RAG retrieval.
-- Gemini API via existing OpenAI-compatible provider.
-- Query aritmatika tidak lagi bergantung pada LLM.
-- Regression sudah memasukkan calculator cases.
+Target:
 
-### v2.2.1 - API error handling dan Ollama fallback
+```text
+README link update
+DOCS_INDEX.md
+IMPLEMENTATION_STATUS.md
+RAG_BOUNDARY.md
+KAGGLE_HANDOFF_CONTRACT.md
+DOCS_MAINTENANCE_POLICY.md
+```
 
-Selesai:
+Tujuan:
 
-- Klasifikasi provider error: `bad_request`, `auth_error`, `model_not_found`, `rate_limited`, `provider_unavailable`, dan `network_error`.
-- Fallback ke Ollama jika provider API gagal sesuai policy.
-- Error Gemini `API_KEY_INVALID` diklasifikasi sebagai `auth_error`.
-- Rate limit lokal/API bisa memicu fallback.
-- Metadata fallback disimpan dalam record jawaban.
+- Dokumentasi tidak lagi memberi kesan L5/L6 sudah selesai.
+- Boundary `ai-rag-local` vs `rag-to-kaggle` eksplisit.
+- Aturan update dokumentasi 9+1 commit dicatat.
 
-### v2.2.2 - Quota-aware API usage dan query cache
+### P1 — L4a.1 Chunking boundary refinement
 
-Selesai:
+Status: planned.
 
-- Local API usage tracker berbasis SQLite.
-- Report harian via `python -m app.api_usage_report`.
-- Cache query sama agar tidak menghabiskan RPD Gemini.
-- Cache accounting sudah memisahkan API request sungguhan dan cache hit.
-- Local RPD preflight bisa memblok request API sebelum memanggil Gemini.
-- Fallback tetap jalan saat local RPD limit tercapai.
+Rasional:
 
-### Reorganisasi `app/`
+L5 compare tidak ideal jika chunk masih dapat mulai/berakhir di tengah kata, title-only chunk ikut export, atau metadata chunk tidak stabil.
 
-Selesai:
+Scope:
 
-- Script dan command dipindahkan ke package lebih rapi: `app/benchmarks/`, `app/reports/`, `app/maintenance/`, `app/queries/`, dan `app/commands/`.
-- Root wrapper tetap dipertahankan untuk command penting.
+```text
+- cegah chunk mulai dari tengah kata
+- cegah chunk berakhir di potongan kata
+- kurangi overlap kasar
+- cegah title-only chunk masuk export
+- pastikan chunk_index tetap berurutan
+- pertahankan original_chunk_index pada metadata bila ada transformasi
+```
 
-### v2.2.3 L1 - Chunking V2 foundation
+Out of scope:
 
-Selesai:
+```text
+- eksperimen chunking besar di Kaggle
+- dynamic chunker berbasis LLM
+- automatic re-chunk seluruh Chroma utama
+```
 
-- `app/rag/chunking_v2.py`
-- `app/benchmarks/chunking_v2_smoke.py`
+### P2 — L5 Old Chroma vs sandbox compare
 
-Fungsi utama:
+Status: planned/pending.
 
-- `clean_text_v2`
-- `split_sections`
-- `chunk_sections`
-- `chunk_text_v2`
+Scope:
 
-Metadata chunk:
-
-- `chunk_index`
-- `section_title`
-- `section_index`
-- `chunker`
-- `char_count`
-- `token_estimate`
-- `document_hash`
-- `chunk_hash`
-
-### v2.2.3 L2a - HTML parser foundation
-
-Selesai:
-
-- `app/parsers/html_parser.py`
-- `app/benchmarks/html_parser_smoke.py`
-
-Kemampuan:
-
-- membersihkan `script`, `style`, `nav`, `footer`, `header`, `aside`, dan noise HTML dasar;
-- mengambil title, description, canonical URL, domain;
-- menghasilkan `ParsedDocument(text, metadata)`;
-- metadata parser menggunakan `html_parser_v1`.
-
-### v2.2.3 L2b - HTML staging pipeline
-
-Selesai:
-
-- `app/staging/web_staging.py`
-- `app/commands/parse_web_staging.py`
-- `app/benchmarks/web_staging_smoke.py`
+```text
+old Chroma collection -> query benchmark -> old top-k report
+sandbox collection -> query benchmark yang sama -> sandbox top-k report
+compare -> diff retrieval, metadata, source, score, failed cases
+```
 
 Output:
 
 ```text
-data/web_staging/parsed_text/*.txt
-data/web_staging/parsed_text/*.metadata.json
-data/web_staging/parsed_text/manifest.jsonl
+outputs/chroma_compare/compare_summary.json
+outputs/chroma_compare/query_results.jsonl
+outputs/chroma_compare/failed_queries.jsonl
+outputs/chroma_compare/promote_recommendation.md
 ```
 
-Jalur ini belum masuk Chroma. Ini disengaja agar data web melewati quality gate dulu.
-
-### v2.2.3 L3 - Quality gate untuk staged web data
-
-Selesai:
-
-- `app/quality/quality_gate.py`
-- `app/commands/run_quality_gate.py`
-- `app/benchmarks/quality_gate_smoke.py`
-
-Rule minimal:
-
-- tolak teks kosong;
-- tolak teks terlalu pendek;
-- tolak potensi API key/token/password;
-- tolak rasio simbol terlalu tinggi;
-- tolak metadata wajib yang kosong;
-- tolak web data tanpa URL/domain.
-
-Output:
+Out of scope:
 
 ```text
-data/web_staging/approved/
-data/web_staging/quarantine/
-data/audits/quality_gate_report.csv
+- promote otomatis
+- import hasil Kaggle langsung ke Chroma utama
+- GAC production consolidation
+- embedding model sweep besar
 ```
 
-### L4a - Export approved staged docs to L1 JSONL
+### P3 — L6 Collection promote guard
 
-Selesai:
+Status: planned setelah L5 aman.
 
-- `app/exporters/l1_jsonl_export.py`
-- `app/commands/export_l1_chunks.py`
-- `app/benchmarks/l1_jsonl_export_smoke.py`
-
-Tujuan:
-
-- membawa staged data yang sudah approved ke format JSONL;
-- menjaga satu baris JSON per chunk;
-- membawa `doc_id`, `text`, source metadata, dan chunk metadata;
-- menjaga agar Chroma utama tidak disentuh langsung.
-
-Command target:
-
-```bash
-python -m app.commands.export_l1_chunks \
-  --input data/web_staging/approved \
-  --output outputs/l1_chunks.jsonl
-```
-
-### L4b - Chroma collection JSONL export foundation
-
-Selesai:
-
-- `app/exporters/chroma_jsonl_export.py`
-- `app/commands/export_chroma_collection.py`
-- `app/benchmarks/chroma_jsonl_export_smoke.py`
-
-Tujuan:
-
-- mengekspor collection Chroma existing ke JSONL untuk audit;
-- memberi bahan compare lama-vs-sandbox pada L5;
-- tidak menimpa Chroma utama;
-- tidak menjalankan promote otomatis.
-
-Command target:
-
-```bash
-python -m app.commands.export_chroma_collection \
-  --collection rag_local \
-  --output outputs/chroma_collection_export.jsonl
-```
-
-### Post-L4 - Pipeline contract test hardening
-
-Selesai:
-
-- `tests/conftest.py`
-- `tests/test_pipeline_contract.py`
-- patch `app/importers/jsonl_collection_importer.py`
-- patch `app/quality/quality_gate.py`
-
-Tujuan:
-
-- memastikan output script sebelumnya bisa dipakai oleh script berikutnya;
-- menangkap mismatch schema `doc_id` dan `document_id`;
-- memastikan `quality_gate` membuat folder `approved` dan `quarantine` walaupun salah satunya kosong;
-- memastikan dokumen quarantine tidak ikut export;
-- memastikan metadata web tetap terbawa sampai JSONL.
-
-Verified:
-
-```bash
-python -m pytest -q tests/test_pipeline_contract.py
-```
-
-Expected:
+Scope:
 
 ```text
-4 passed
+- baca compare report
+- baca regression report
+- cek failed queries
+- cek metadata/source retention
+- cek query angka/nama/tanggal/kode
+- minta owner approval sebelum promote
+- siapkan rollback manifest
 ```
 
----
-
-## 3. Kontrak pipeline saat ini
-
-Jalur aman web data:
+Tidak boleh promote jika:
 
 ```text
-raw_html
-→ html_parser
-→ parsed_text + metadata
-→ quality_gate
-→ approved / quarantine
-→ l1_jsonl_export
-→ jsonl_collection_importer
-→ Chroma sandbox
-→ regression / compare
-→ promote jika aman
+- L5 belum ada
+- regression belum jalan
+- sandbox lebih buruk dari old collection
+- metadata source hilang
+- query identity-critical gagal
+- owner belum approve
 ```
 
-Jalur audit Chroma existing:
+### P4 — Runtime guards bertahap
+
+Status: planned bertahap.
+
+Urutan aman:
 
 ```text
-Chroma existing collection
-→ chroma_jsonl_export
-→ JSONL audit
-→ compare lama-vs-sandbox
+1. Chunk Identity Guard sederhana
+2. Graph Guard untuk query angka/spesifik
+3. Compressor Guard untuk negasi dan syarat
+4. Evidence Sufficiency Gate
+5. Parser Guard lanjutan
+6. Retrieval Router berbasis intent
+7. Geometry Audit sebagai risk label, bukan replacement engine
 ```
 
----
+Catatan:
 
-## 4. Kontrak JSONL
+Runtime guards sebaiknya tidak dibuat terlalu besar sebelum L5, karena setiap guard harus dapat diuji dalam old-vs-sandbox compare dan regression lokal.
 
-Format minimal:
+### P5 — Integrasi report dari rag-to-kaggle
 
-```json
-{
-  "doc_id": "dokumen_001",
-  "text": "Isi chunk"
-}
-```
+Status: planned setelah handoff contract stabil.
 
-Format disarankan:
-
-```json
-{
-  "doc_id": "dokumen_001",
-  "title": "Judul Dokumen",
-  "source": "file_asal.pdf atau URL",
-  "source_type": "web|local_file|chroma",
-  "parser": "html_parser_v1|pdf_parser|text_parser|chroma_export",
-  "page": null,
-  "chunk_index": 0,
-  "text": "Isi chunk",
-  "metadata": {
-    "section_title": "Pendahuluan",
-    "section_index": 0,
-    "heading_path": "Pendahuluan",
-    "char_count": 850,
-    "token_estimate": 210,
-    "document_hash": "sha256...",
-    "chunk_hash": "sha256...",
-    "chunker": "chunking_v2",
-    "approval_status": "approved",
-    "quality_gate_status": "approved"
-  }
-}
-```
-
-Catatan kontrak importer:
-
-- Importer menerima `document_id` atau `doc_id`.
-- Jika hanya ada `doc_id`, importer membuat ID unik per chunk memakai `doc_id:chunk_index` jika `chunk_index` tersedia.
-- Jika `chunk_index` tidak tersedia, importer boleh memakai `doc_id:chunk_hash` jika metadata menyediakan `chunk_hash`.
-- `doc_id` saja hanya fallback terakhir.
-
----
-
-## 5. Roadmap terdekat
-
-### Selesai
+`ai-rag-local` boleh menerima:
 
 ```text
-[x] L1 chunking_v2 foundation
-[x] L2a HTML parser foundation
-[x] L2b HTML staging pipeline
-[x] L3 quality gate
-[x] L4a approved staged docs to L1 JSONL
-[x] L4b Chroma collection JSONL export foundation
-[x] Post-L4 pipeline contract tests
+risk_labels.jsonl
+recommended_params.json
+benchmark_report.json
+failed_queries.jsonl
+geometry_audit_summary.json
 ```
 
-### Berikutnya
+`ai-rag-local` tidak boleh menerima langsung:
 
 ```text
-[ ] L4a.1 chunking boundary refinement
-[ ] L5 compare old Chroma vs sandbox/new corpus
-[ ] L6 collection promote guard
-[ ] v2.3 mini scraper agent, setelah Kaggle hook jelas
+production Chroma replacement
+centroid-only memory store
+promotion decision final dari Kaggle
+config override otomatis tanpa regression lokal
 ```
 
----
+## 4. Catatan trade-off
 
-## 6. Test baseline sebelum patch berikutnya
+### Parser Guard
 
-```bash
-python -m compileall app
-python -m app.benchmarks.chunking_v2_smoke
-python -m app.benchmarks.html_parser_smoke
-python -m app.benchmarks.web_staging_smoke
-python -m app.benchmarks.quality_gate_smoke
-python -m app.benchmarks.l1_jsonl_export_smoke
-python -m app.benchmarks.chroma_jsonl_export_smoke
-python -m pytest -q tests/test_pipeline_contract.py
+Benefit: mengurangi noise sejak awal.
+Trade-off: recall bisa turun karena chunk yang meragukan masuk quarantine.
+Scope: masuk `ai-rag-local`.
 
-export RAG_LLM_PROVIDER=ollama
-export RAG_MODEL_MODE=general
-export RAG_QWEN_JUDGE_ENABLED=false
-export RAG_VERIFICATION_AUDIT_ENABLED=false
-python -m app.rag_regression_bench
-```
+### Chunk Identity Guard
 
-Expected minimal untuk contract test:
+Benefit: menjaga angka, tanggal, kode, nama, dan versi agar tidak hilang saat graph/compression.
+Trade-off: konteks bisa lebih panjang dan graph lebih sering mati.
+Scope: masuk `ai-rag-local`.
+
+### Graph Guard
+
+Benefit: graph hanya aktif saat query memang relasional.
+Trade-off: eksplorasi relasi implisit bisa berkurang.
+Scope: masuk `ai-rag-local`.
+
+### Compressor Guard
+
+Benefit: mencegah syarat, negasi, dan fakta angka terpotong.
+Trade-off: token konteks naik.
+Scope: masuk `ai-rag-local`.
+
+### Geometry Audit
+
+Benefit: memberi risk label pada cluster/chunk.
+Trade-off: mahal, tidak selalu stabil untuk cluster kecil.
+Scope: lightweight risk label di `ai-rag-local`, full experiment di `rag-to-kaggle`.
+
+## 5. Aturan dokumentasi
+
+Setiap 9 commit implementasi, commit ke-10 wajib memperbarui dokumentasi. Commit dokumentasi harus mengecek minimal:
 
 ```text
-4 passed
+README.md
+DOCS_INDEX.md
+IMPLEMENTATION_STATUS.md
+DEVELOPMENT_PLAN.md
+TEST_PLAN.md
+RAG_BOUNDARY.md / KAGGLE_HANDOFF_CONTRACT.md bila boundary berubah
 ```
-
-Expected regression lokal:
-
-```text
-SUMMARY: 6/6 passed
-```
-
----
-
-## 7. L4a.1 Backlog - Chunking V2 boundary refinement
-
-Status: backlog teknis setelah L4a JSONL export.
-
-Tujuan refinement:
-
-- Chunk tidak dimulai dari tengah kata.
-- Chunk tidak berakhir di tengah kata jika masih ada batas aman.
-- Overlap tidak menyebabkan pengulangan frasa yang terlalu terlihat.
-- Title-only chunk tidak diekspor sebagai chunk mandiri.
-- Heading tetap dipertahankan sebagai metadata, bukan selalu sebagai chunk teks terpisah.
-- Anti-loop guard tetap aman.
-
-Acceptance criteria:
-
-- `python -m app.benchmarks.l1_jsonl_export_smoke` lulus.
-- `python -m pytest -q tests/test_pipeline_contract.py` tetap lulus.
-- `python -m app.rag_regression_bench` tetap `6/6 passed`.
-- Export JSONL tidak membawa title-only chunk.
-- Exported `chunk_index` berurutan mulai dari 0.
-- `metadata.original_chunk_index` tetap tersimpan.
-- Tidak ada chunk yang jelas dimulai dari tengah kata pada smoke sample.
-- Tidak ada overlap yang menduplikasi frasa secara kasar pada smoke sample.
