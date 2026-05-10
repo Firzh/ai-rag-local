@@ -133,6 +133,32 @@ def split_paragraphs(text: str) -> list[str]:
     return paragraphs
 
 
+
+def _is_word_char(char: str) -> bool:
+    return bool(char) and (char.isalnum() or char == "_")
+
+
+def _snap_start_to_boundary(text: str, raw_start: int) -> int:
+    """Move start so a sliding window does not begin in the middle of a token."""
+    if raw_start <= 0:
+        return 0
+    if raw_start >= len(text):
+        return len(text)
+
+    previous_char = text[raw_start - 1]
+    current_char = text[raw_start]
+    if not (_is_word_char(previous_char) and _is_word_char(current_char)):
+        return raw_start
+
+    pos = raw_start
+    while pos < len(text) and _is_word_char(text[pos]):
+        pos += 1
+    while pos < len(text) and text[pos].isspace():
+        pos += 1
+
+    return pos if pos < len(text) else raw_start
+
+
 def _apply_overlap(previous_text: str, overlap_chars: int) -> str:
     if overlap_chars <= 0:
         return ""
@@ -155,18 +181,28 @@ def _apply_overlap(previous_text: str, overlap_chars: int) -> str:
 
 def _find_safe_window_end(text: str, start: int, target_chars: int) -> int:
     hard_end = min(start + target_chars, len(text))
-
     if hard_end >= len(text):
         return len(text)
 
-    # Jangan potong terlalu awal. Cari spasi terakhir di paruh kedua window.
+    # Prefer a sentence/space boundary in the second half of the window.
     search_start = min(len(text), start + max(1, target_chars // 2))
-    candidate = text.rfind(" ", search_start, hard_end)
 
+    sentence_candidates = [
+        text.rfind(". ", search_start, hard_end),
+        text.rfind("! ", search_start, hard_end),
+        text.rfind("? ", search_start, hard_end),
+        text.rfind("; ", search_start, hard_end),
+    ]
+    sentence_end = max(sentence_candidates)
+    if sentence_end > start:
+        return sentence_end + 1
+
+    candidate = text.rfind(" ", search_start, hard_end)
     if candidate > start:
         return candidate
 
     return hard_end
+
 
 def chunk_sections(
     sections: list[Section],
@@ -251,12 +287,11 @@ def chunk_sections(
                     if end >= paragraph_len:
                         break
 
-                    next_start = end - overlap_chars if overlap_chars > 0 else end
-
+                    raw_next_start = end - overlap_chars if overlap_chars > 0 else end
+                    next_start = _snap_start_to_boundary(paragraph, raw_next_start)
                     # Safety guard: pastikan window selalu maju.
                     if next_start <= start:
                         next_start = end
-
                     start = next_start
 
                 continue
