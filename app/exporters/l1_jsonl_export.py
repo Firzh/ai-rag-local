@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-from app.rag.chunking_v2 import Chunk, chunk_text_v2, stable_hash
+from app.rag.chunking_v2 import Chunk, chunk_text_v2, stable_hash, detect_heading
 
 
 @dataclass(frozen=True)
@@ -57,6 +58,33 @@ def normalize_doc_id(metadata: dict[str, Any], text: str) -> str:
         or metadata.get("document_hash")
         or stable_hash(text)
     )
+
+
+
+
+_IDENTITY_HINT_RE = re.compile(
+    r"(\d{4}|Rp\.?\s*\d+|ID\b|NIM\b|API\b|KEY\b|[A-Z]{2,}[-_]\d+)"
+)
+
+
+def looks_title_only_chunk(text: str) -> bool:
+    raw = text.strip()
+    normalized = re.sub(r"\s+", " ", raw).strip()
+
+    if not normalized:
+        return False
+    if "\n" in raw:
+        return False
+    if len(normalized) > 90:
+        return False
+    if len(normalized.split()) > 12:
+        return False
+    if normalized.endswith((".", "!", "?", ";", ":")):
+        return False
+    if _IDENTITY_HINT_RE.search(normalized):
+        return False
+
+    return bool(detect_heading(normalized))
 
 
 def build_base_metadata(metadata: dict[str, Any], text_path: Path, text: str) -> dict[str, Any]:
@@ -158,10 +186,17 @@ def export_l1_chunks_jsonl(
             exported_records: list[dict[str, Any]] = []
             exported_chunk_index = 0
 
+            has_body_chunk = any(
+                not looks_title_only_chunk(candidate.text.strip()) for candidate in chunks
+            )
+
             for chunk in chunks:
-                if len(chunk.text.strip()) < min_chunk_chars and len(chunks) > 1:
+                stripped_text = chunk.text.strip()
+                if len(stripped_text) < min_chunk_chars and len(chunks) > 1:
                     continue
 
+                if has_body_chunk and looks_title_only_chunk(stripped_text):
+                    continue
                 record = chunk_to_jsonl_record(
                     chunk=chunk,
                     base_metadata=base_metadata,

@@ -18,3 +18,4 @@ data/answers/*.json
 data/answers/*.md
 data/exports/
 data/tmp/
+bootstrap/
