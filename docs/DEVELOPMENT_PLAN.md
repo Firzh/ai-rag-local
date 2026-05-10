@@ -213,3 +213,33 @@ DEVELOPMENT_PLAN.md
 TEST_PLAN.md
 RAG_BOUNDARY.md / KAGGLE_HANDOFF_CONTRACT.md bila boundary berubah
 ```
+
+<!-- L4A1_BOUNDARY_REFINEMENT_START -->
+## L4a.1 Chunking Boundary Refinement
+
+L4a.1 refines the L4a approved-docs-to-L1-JSONL path without entering L5
+sandbox compare. The goal is to protect evidence identity before retrieval,
+graph expansion, compressor pruning, or collection promotion uses the exported
+chunks.
+
+Patch scope:
+
+- refine long paragraph splitting so chunk windows do not start from a broken
+  token when a safe boundary exists;
+- prefer sentence or whitespace end boundaries before falling back to hard cut;
+- filter `title-only` chunks from L1 export only when body chunks still exist in
+  the same document;
+- preserve sequential exported `chunk_index`;
+- preserve `metadata.original_chunk_index` for auditability.
+
+Trade-off:
+
+- precision and evidence cleanliness improve;
+- some heading-only chunks disappear from L1 export when better body evidence
+  exists;
+- documents that only contain a title-like chunk are still preserved so quality
+  gate or later review can decide.
+
+The patch intentionally does not implement L5 sandbox compare, L6 promote guard,
+graph guard, compressor guard, or geometry audit.
+<!-- L4A1_BOUNDARY_REFINEMENT_END -->

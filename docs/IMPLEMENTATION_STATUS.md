@@ -112,3 +112,31 @@ Gunakan kata berikut secara konsisten:
 ## 5. Aturan dokumentasi 9+1 commit
 
 Setiap 9 commit implementasi, commit ke-10 wajib memperbarui dokumentasi ini beserta dokumen terkait. Perubahan safety, kontrak data, atau boundary tetap wajib didokumentasikan segera walaupun belum mencapai commit ke-10.
+
+<!-- L4A1_BOUNDARY_REFINEMENT_START -->
+## L4a.1 Chunking Boundary Refinement
+
+Status: implemented on the L4a.1 feature branch after contract tests pass. The
+change becomes part of the main documentation source of truth after the PR is
+merged.
+
+Implemented behavior:
+
+- long-paragraph chunk windows avoid starting from the middle of a token when a
+  safe boundary exists;
+- chunk window end prefers sentence or whitespace boundaries before hard-cut
+  fallback;
+- `title-only` chunks are skipped during L1 JSONL export when the same document
+  still has substantive body chunks;
+- exported `chunk_index` remains sequential after filtering;
+- `metadata.original_chunk_index` preserves the source chunk index before export
+  filtering.
+
+Out of scope:
+
+- no Chroma main write;
+- no L5 old Chroma vs sandbox compare;
+- no L6 promote guard;
+- no geometry-aware consolidation;
+- no Kaggle-side pipeline execution.
+<!-- L4A1_BOUNDARY_REFINEMENT_END -->

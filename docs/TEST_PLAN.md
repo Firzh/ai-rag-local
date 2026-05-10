@@ -143,3 +143,27 @@ failed query fixture
 ```
 
 Setiap 9 commit implementasi, commit ke-10 wajib memperbarui dokumen ini bila ada test baru, test berubah, atau coverage belum sinkron dengan fitur.
+
+<!-- L4A1_BOUNDARY_REFINEMENT_START -->
+## L4a.1 Chunking Boundary Contract Tests
+
+Required checks for the L4a.1 patch:
+
+```bash
+python -m pytest -q tests/test_l4a1_chunk_boundary_contract.py -vv
+python -m pytest -q tests/test_pipeline_contract.py
+python -m app.benchmarks.chunking_v2_smoke
+python -m app.benchmarks.l1_jsonl_export_smoke
+git diff --check
+```
+
+Acceptance criteria:
+
+- long paragraph chunks do not split synthetic `kataNNN` tokens;
+- chunk metadata keeps sequential `chunk_index`;
+- L1 export skips `title-only` chunks when body chunks exist;
+- a single title-only document is not dropped;
+- exported `chunk_index` remains sequential;
+- `metadata.original_chunk_index` remains available after filtering;
+- existing post-L4 pipeline contract tests still pass.
+<!-- L4A1_BOUNDARY_REFINEMENT_END -->

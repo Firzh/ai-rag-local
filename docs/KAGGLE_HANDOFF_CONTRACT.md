@@ -156,3 +156,26 @@ file berasal dari output Kaggle tanpa report evaluasi
 ## 10. Aturan maintenance
 
 Perubahan pada kontrak JSONL, manifest, output report, atau promotion flow harus memperbarui dokumen ini. Dalam siklus normal, setiap 9 commit implementasi diikuti commit ke-10 untuk dokumentasi.
+
+<!-- L4A1_BOUNDARY_REFINEMENT_START -->
+## L4a.1 Export Boundary Contract
+
+L4a.1 changes the shape of L1 JSONL export only in a conservative way. The RAG
+side may filter `title-only` chunks before handoff when the same document still
+contains substantive body chunks.
+
+Contract implications:
+
+- `chunk_index` in exported JSONL remains sequential after filtering;
+- `metadata.original_chunk_index` records the original chunk index before export
+  filtering;
+- downstream pipelines must not assume that exported `chunk_index` equals the
+  pre-filter chunk index;
+- title-like chunks with identity hints such as years, IDs, codes, or monetary
+  values should not be treated as disposable headings;
+- `rag-to-kaggle` may consume the filtered JSONL but must not promote any result
+  to Chroma main directly.
+
+This remains a handoff contract update, not a sandbox compare or promotion
+implementation.
+<!-- L4A1_BOUNDARY_REFINEMENT_END -->
